@@ -12,5 +12,11 @@ enum class ErrorCode (
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User Not Found"),
-    USER_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "User Already Exists")
+    USER_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "User Already Exists"),
+
+    // External API
+    EXTERNAL_API_NOT_FOUND(HttpStatus.NOT_FOUND, "External API Resource Not Found"),
+    EXTERNAL_API_BAD_REQUEST(HttpStatus.BAD_REQUEST, "External API Bad Request"),
+    EXTERNAL_API_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "External API Unauthorized"),
+    EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "External API Error")
 }
