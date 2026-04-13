@@ -42,3 +42,7 @@ jwt:
   header: ${HEADER}
   prefix: ${PREFIX}
   accessExp: ${ACCESS_EXP}
+
+apick:
+  url: https://apick.app
+  auth-key: ${APICK_AUTH_KEY}
