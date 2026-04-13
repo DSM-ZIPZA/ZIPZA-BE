@@ -34,4 +34,13 @@ interface ApickClient {
         @RequestHeader("CL_AUTH_KEY") authKey: String,
         @RequestBody body: MultiValueMap<String, Any>
     ): BuildingRegisterListResponse
+
+    @PostMapping(
+        value = ["/rest/land_register"],
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
+    )
+    fun getLandRegister(
+        @RequestHeader("CL_AUTH_KEY") authKey: String,
+        @RequestBody body: MultiValueMap<String, Any>
+    ): Response
 }
