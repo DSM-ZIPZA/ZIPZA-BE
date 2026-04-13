@@ -1,5 +1,6 @@
 package com.example.zipzabe.domain.building.service
 
+import com.example.zipzabe.domain.building.dto.BuildingRegisterListResponse
 import com.example.zipzabe.domain.building.dto.BuildingRegisterRequest
 import com.example.zipzabe.global.feign.client.ApickClient
 import org.springframework.beans.factory.annotation.Value
@@ -21,5 +22,12 @@ class BuildingService(
         }
         val response = apickClient.getBuildingRegister(authKey, body)
         return response.body().asInputStream().readBytes()
+    }
+
+    fun getBuildingRegisterList(address: String): BuildingRegisterListResponse {
+        val body = LinkedMultiValueMap<String, Any>().apply {
+            add("address", address)
+        }
+        return apickClient.getBuildingRegisterList(authKey, body)
     }
 }

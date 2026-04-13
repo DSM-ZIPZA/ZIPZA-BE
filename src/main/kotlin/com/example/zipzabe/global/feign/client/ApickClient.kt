@@ -1,5 +1,6 @@
 package com.example.zipzabe.global.feign.client
 
+import com.example.zipzabe.domain.building.dto.BuildingRegisterListResponse
 import com.example.zipzabe.global.feign.config.ApickFeignConfig
 import feign.Response
 import org.springframework.cloud.openfeign.FeignClient
@@ -24,4 +25,13 @@ interface ApickClient {
         @RequestHeader("CL_AUTH_KEY") authKey: String,
         @RequestBody body: MultiValueMap<String, Any>
     ): Response
+
+    @PostMapping(
+        value = ["/rest/get_building_register_list"],
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
+    )
+    fun getBuildingRegisterList(
+        @RequestHeader("CL_AUTH_KEY") authKey: String,
+        @RequestBody body: MultiValueMap<String, Any>
+    ): BuildingRegisterListResponse
 }
