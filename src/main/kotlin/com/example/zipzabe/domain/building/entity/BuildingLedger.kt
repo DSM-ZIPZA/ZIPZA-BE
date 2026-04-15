@@ -57,6 +57,15 @@ class BuildingLedger(
     @Column(nullable = false)
     val exclusiveArea: Double,
 
+    @Column(nullable = false)
+    val isViolationBuilding: Boolean = false,
+
+    @Column(length = 200)
+    val violationReason: String? = null,
+
+    @Column(length = 1000)
+    val violationDetail: String? = null,
+
     @Column(nullable = false, updatable = false)
     val fetchedAt: LocalDateTime = LocalDateTime.now(),
 ) : BaseEntity()

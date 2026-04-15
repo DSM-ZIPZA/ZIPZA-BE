@@ -42,6 +42,21 @@ class BuildingAnalysis(
     @Column(nullable = false, columnDefinition = "TEXT")
     val riskReason: String,
 
+    @Column(nullable = false)
+    val isAddressMatched: Boolean,
+
+    @Column(nullable = false)
+    val isUsageMatched: Boolean,
+
+    @Column(nullable = false)
+    val hasViolationBuilding: Boolean,
+
+    @Column(length = 1000)
+    val violationMessage: String? = null,
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    val comparisonWarnings: String = "[]",
+
     @Column(nullable = false, updatable = false)
     val analyzedAt: LocalDateTime = LocalDateTime.now(),
 ) : BaseEntity()
