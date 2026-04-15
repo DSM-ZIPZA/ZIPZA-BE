@@ -14,6 +14,13 @@ enum class ErrorCode (
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User Not Found"),
     USER_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "User Already Exists"),
 
+    // Analysis
+    ANALYSIS_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Analysis Request Not Found"),
+    BUILDING_LEDGER_NOT_FOUND(HttpStatus.NOT_FOUND, "Building Ledger Not Found"),
+    REGISTRY_RAW_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Raw Not Found"),
+    REGISTRY_TITLE_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Title Not Found"),
+    PUBLIC_LEDGER_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "Public Ledger Summary Not Found"),
+
     // External API
     EXTERNAL_API_NOT_FOUND(HttpStatus.NOT_FOUND, "External API Resource Not Found"),
     EXTERNAL_API_BAD_REQUEST(HttpStatus.BAD_REQUEST, "External API Bad Request"),

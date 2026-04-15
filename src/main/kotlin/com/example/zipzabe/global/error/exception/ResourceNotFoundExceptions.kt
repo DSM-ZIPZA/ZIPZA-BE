@@ -1,0 +1,11 @@
+package com.example.zipzabe.global.error.exception
+
+class AnalysisRequestNotFoundException : ZipzaException(ErrorCode.ANALYSIS_REQUEST_NOT_FOUND)
+
+class BuildingLedgerNotFoundException : ZipzaException(ErrorCode.BUILDING_LEDGER_NOT_FOUND)
+
+class RegistryRawNotFoundException : ZipzaException(ErrorCode.REGISTRY_RAW_NOT_FOUND)
+
+class RegistryTitleNotFoundException : ZipzaException(ErrorCode.REGISTRY_TITLE_NOT_FOUND)
+
+class PublicLedgerSummaryNotFoundException : ZipzaException(ErrorCode.PUBLIC_LEDGER_SUMMARY_NOT_FOUND)
