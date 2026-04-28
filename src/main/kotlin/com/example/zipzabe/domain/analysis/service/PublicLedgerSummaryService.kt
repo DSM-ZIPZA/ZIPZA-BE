@@ -106,7 +106,7 @@ class PublicLedgerSummaryService(
         val overallWarnings = (buildingSummary.warnings + rightsSummary.warnings).distinct()
 
         return PublicLedgerSummaryResponse(
-            requestId = request.id,
+            requestId = requireNotNull(request.id),
             matching = PublicLedgerSummaryResponse.MatchingSummary(
                 isAddressMatched = buildingSummary.isAddressMatched,
                 isAreaMatched = buildingSummary.isAreaMatched,

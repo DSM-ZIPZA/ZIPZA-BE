@@ -21,6 +21,11 @@ enum class ErrorCode (
     REGISTRY_TITLE_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Title Not Found"),
     PUBLIC_LEDGER_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "Public Ledger Summary Not Found"),
 
+    // Auth
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Unauthorized"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Token"),
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Token Expired"),
+
     // External API
     EXTERNAL_API_NOT_FOUND(HttpStatus.NOT_FOUND, "External API Resource Not Found"),
     EXTERNAL_API_BAD_REQUEST(HttpStatus.BAD_REQUEST, "External API Bad Request"),

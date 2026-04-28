@@ -46,3 +46,6 @@ jwt:
 apick:
   url: https://apick.app
   auth-key: ${APICK_AUTH_KEY}
+
+app:
+  frontend-redirect-url: ${FRONTEND_REDIRECT_URL:http://localhost:3000/auth/callback}
