@@ -40,6 +40,7 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .oauth2Login { oauth2 ->
                 oauth2
+                    .redirectionEndpoint { it.baseUri("/zipza/oauth2") }
                     .userInfoEndpoint { it.userService(kakaoOAuth2UserService) }
                     .successHandler(oauth2SuccessHandler)
                     .failureHandler(oauth2FailureHandler)
