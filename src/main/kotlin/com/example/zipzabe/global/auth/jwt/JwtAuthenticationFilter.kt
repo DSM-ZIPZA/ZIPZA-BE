@@ -1,5 +1,6 @@
 package com.example.zipzabe.global.auth.jwt
 
+import com.example.zipzabe.global.error.exception.BlacklistedTokenException
 import com.example.zipzabe.global.error.exception.ZipzaException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -14,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 @Component
 class JwtAuthenticationFilter(
     private val jwtProvider: JwtProvider,
+    private val tokenBlacklistService: TokenBlacklistService,
     @Value("\${jwt.header}") private val header: String,
     @Value("\${jwt.prefix}") private val prefix: String,
 ) : OncePerRequestFilter() {
@@ -26,6 +28,7 @@ class JwtAuthenticationFilter(
         val token = resolveToken(request)
         if (token != null) {
             try {
+                if (tokenBlacklistService.isBlacklisted(token)) throw BlacklistedTokenException()
                 val userId = jwtProvider.getUserId(token)
                 val auth = UsernamePasswordAuthenticationToken(
                     userId,
