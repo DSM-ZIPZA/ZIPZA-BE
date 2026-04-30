@@ -39,6 +39,17 @@ class JwtProvider(
         }
     }
 
+    fun getExpiration(token: String): Long {
+        return try {
+            val remaining = getClaims(token).expiration.time - System.currentTimeMillis()
+            if (remaining < 0) 0L else remaining
+        } catch (e: ExpiredJwtException) {
+            0L
+        } catch (e: JwtException) {
+            throw InvalidTokenException()
+        }
+    }
+
     private fun getClaims(token: String) =
         Jwts.parser()
             .verifyWith(signingKey)

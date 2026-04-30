@@ -25,6 +25,7 @@ enum class ErrorCode (
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Unauthorized"),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Token"),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Token Expired"),
+    BLACKLISTED_TOKEN(HttpStatus.UNAUTHORIZED, "Blacklisted Token"),
 
     // External API
     EXTERNAL_API_NOT_FOUND(HttpStatus.NOT_FOUND, "External API Resource Not Found"),
