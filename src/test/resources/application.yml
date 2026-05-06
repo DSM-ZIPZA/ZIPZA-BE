@@ -33,7 +33,7 @@ spring:
             user-name-attribute: id
 
 jwt:
-  secretKey: test-jwt-secret
+  secretKey: test-jwt-secret-test-jwt-secret-32bytes
   header: Authorization
   prefix: Bearer
   accessExp: 3600
@@ -41,3 +41,16 @@ jwt:
 apick:
   url: http://localhost
   auth-key: test-auth-key
+
+molit:
+  rent:
+    url: http://localhost
+    service-key: test-service-key
+
+gemini:
+  url: http://localhost
+  api-key: test-gemini-api-key
+  model: gemini-test-model
+
+app:
+  frontend-redirect-url: http://localhost:3000/auth/callback

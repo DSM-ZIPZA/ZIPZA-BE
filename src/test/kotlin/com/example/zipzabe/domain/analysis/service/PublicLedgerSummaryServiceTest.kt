@@ -32,8 +32,10 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
 import java.util.Optional
+import java.util.UUID
 
 class PublicLedgerSummaryServiceTest {
 
@@ -63,6 +65,7 @@ class PublicLedgerSummaryServiceTest {
     @Test
     fun `analyzePublicLedger returns integrated summary and saves analyses`() {
         val request = createAnalysisRequest()
+        val requestId = requireNotNull(request.id)
         val buildingLedger = createBuildingLedger(request.property)
         val registryRaw = createRegistryRaw(request)
         val registryTitle = createRegistryTitle(registryRaw)
@@ -76,7 +79,7 @@ class PublicLedgerSummaryServiceTest {
         )
         val mortgages = listOf(createMortgage(registryRaw))
 
-        Mockito.`when`(analysisRequestRepository.findById(request.id)).thenReturn(Optional.of(request))
+        Mockito.`when`(analysisRequestRepository.findById(requestId)).thenReturn(Optional.of(request))
         Mockito.`when`(buildingLedgerRepository.findTopByPropertyOrderByFetchedAtDesc(request.property)).thenReturn(buildingLedger)
         Mockito.`when`(registryRawRepository.findTopByRequestOrderByFetchedAtDesc(request)).thenReturn(registryRaw)
         Mockito.`when`(registryTitleRepository.findByRegistryRaw(registryRaw)).thenReturn(listOf(registryTitle))
@@ -84,7 +87,7 @@ class PublicLedgerSummaryServiceTest {
         Mockito.`when`(registryRestrictionRepository.findByRegistryRawOrderByRankNumberAsc(registryRaw)).thenReturn(restrictions)
         Mockito.`when`(registryMortgageRepository.findByRegistryRawOrderByRankNumberAsc(registryRaw)).thenReturn(mortgages)
 
-        val response = service.analyzePublicLedger(request.id)
+        val response = service.analyze(requestId)
 
         assertEquals(request.id, response.requestId)
         assertTrue(response.matching.isAddressMatched)
@@ -110,12 +113,13 @@ class PublicLedgerSummaryServiceTest {
     @Test
     fun `analyzePublicLedger throws when building ledger is missing`() {
         val request = createAnalysisRequest()
+        val requestId = requireNotNull(request.id)
 
-        Mockito.`when`(analysisRequestRepository.findById(request.id)).thenReturn(Optional.of(request))
+        Mockito.`when`(analysisRequestRepository.findById(requestId)).thenReturn(Optional.of(request))
         Mockito.`when`(buildingLedgerRepository.findTopByPropertyOrderByFetchedAtDesc(request.property)).thenReturn(null)
 
         assertThrows(BuildingLedgerNotFoundException::class.java) {
-            service.analyzePublicLedger(request.id)
+            service.analyze(requestId)
         }
 
         Mockito.verify(buildingAnalysisRepository, Mockito.never()).save(Mockito.any(BuildingAnalysis::class.java))
@@ -156,7 +160,7 @@ class PublicLedgerSummaryServiceTest {
             balanceDate = LocalDate.now().plusDays(30),
             expiryDate = LocalDate.now().plusYears(2),
             status = AnalysisStatus.PENDING,
-        )
+        ).also { ReflectionTestUtils.setField(it, "id", UUID.randomUUID()) }
     }
 
     private fun createBuildingLedger(property: Property): BuildingLedger =
