@@ -37,6 +37,7 @@ The application requires these environment variables (set in `.env` or shell):
 | `HEADER` | JWT header name |
 | `PREFIX` | JWT token prefix (e.g. Bearer) |
 | `ACCESS_EXP` | JWT access token expiration |
+| `GEMINI_API_KEY` | Gemini API key |
 
 ## Architecture
 
