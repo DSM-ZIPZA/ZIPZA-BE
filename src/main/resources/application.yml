@@ -57,6 +57,10 @@ gemini:
   api-key: ${GEMINI_API_KEY}
   model: gemini-2.5-flash
 
+molit:
+  rent:
+    url: http://apis.data.go.kr
+    service-key: ${MOLIT_RENT_SERVICE_KEY}
+
 app:
   frontend-redirect-url: ${FRONTEND_REDIRECT_URL:http://localhost:3000/auth/callback}
-
