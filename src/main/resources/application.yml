@@ -52,5 +52,11 @@ apick:
   url: https://apick.app
   auth-key: ${APICK_AUTH_KEY}
 
+gemini:
+  url: https://generativelanguage.googleapis.com
+  api-key: ${GEMINI_API_KEY}
+  model: gemini-2.5-flash
+
 app:
   frontend-redirect-url: ${FRONTEND_REDIRECT_URL:http://localhost:3000/auth/callback}
+
