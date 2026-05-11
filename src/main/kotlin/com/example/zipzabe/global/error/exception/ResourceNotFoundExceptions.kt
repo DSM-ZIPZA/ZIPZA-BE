@@ -9,3 +9,11 @@ class RegistryRawNotFoundException : ZipzaException(ErrorCode.REGISTRY_RAW_NOT_F
 class RegistryTitleNotFoundException : ZipzaException(ErrorCode.REGISTRY_TITLE_NOT_FOUND)
 
 class PublicLedgerSummaryNotFoundException : ZipzaException(ErrorCode.PUBLIC_LEDGER_SUMMARY_NOT_FOUND)
+
+class RightsAnalysisNotFoundException : ZipzaException(ErrorCode.RIGHTS_ANALYSIS_NOT_FOUND)
+
+class RecoveryAnalysisNotFoundException : ZipzaException(ErrorCode.RECOVERY_ANALYSIS_NOT_FOUND)
+
+class GuaranteeAnalysisNotFoundException : ZipzaException(ErrorCode.GUARANTEE_ANALYSIS_NOT_FOUND)
+
+class FraudPatternAnalysisNotFoundException : ZipzaException(ErrorCode.FRAUD_PATTERN_ANALYSIS_NOT_FOUND)

@@ -20,6 +20,10 @@ enum class ErrorCode (
     REGISTRY_RAW_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Raw Not Found"),
     REGISTRY_TITLE_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Title Not Found"),
     PUBLIC_LEDGER_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "Public Ledger Summary Not Found"),
+    RIGHTS_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Rights Analysis Not Found"),
+    RECOVERY_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Recovery Analysis Not Found"),
+    GUARANTEE_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Guarantee Analysis Not Found"),
+    FRAUD_PATTERN_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Fraud Pattern Analysis Not Found"),
 
     // Auth
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Unauthorized"),
