@@ -8,6 +8,7 @@ import com.example.zipzabe.global.error.GlobalExceptionFilter
 import com.example.zipzabe.global.error.exception.ErrorCode
 import com.example.zipzabe.global.error.exception.ErrorResponse
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.MediaType
@@ -24,6 +25,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    @Value("\${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    private val allowedOriginsProperty: String,
 ) {
     @Bean
     fun filterChain(
@@ -51,6 +54,8 @@ class SecurityConfig(
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/swagger-ui.html",
+                        "/actuator/health",
+                        "/actuator/health/**",
                     ).permitAll()
                     .anyRequest().authenticated()
             }
@@ -74,7 +79,10 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration()
-        config.allowedOrigins = listOf("http://localhost:3000", "http://localhost:5173")
+        config.allowedOrigins = allowedOriginsProperty
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
         config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
         config.allowedHeaders = listOf("*")
         config.allowCredentials = true

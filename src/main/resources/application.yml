@@ -64,3 +64,15 @@ molit:
 
 app:
   frontend-redirect-url: ${FRONTEND_REDIRECT_URL:http://localhost:3000/auth/callback}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
