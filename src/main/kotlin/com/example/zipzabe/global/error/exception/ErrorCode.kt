@@ -24,6 +24,8 @@ enum class ErrorCode (
     RECOVERY_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Recovery Analysis Not Found"),
     GUARANTEE_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Guarantee Analysis Not Found"),
     FRAUD_PATTERN_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Fraud Pattern Analysis Not Found"),
+    PRICE_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Price Analysis Not Found"),
+    DIAGNOSIS_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Diagnosis Report Not Found"),
 
     // Auth
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Unauthorized"),

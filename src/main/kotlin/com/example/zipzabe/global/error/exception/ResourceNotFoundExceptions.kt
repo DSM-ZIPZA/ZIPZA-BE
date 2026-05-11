@@ -17,3 +17,7 @@ class RecoveryAnalysisNotFoundException : ZipzaException(ErrorCode.RECOVERY_ANAL
 class GuaranteeAnalysisNotFoundException : ZipzaException(ErrorCode.GUARANTEE_ANALYSIS_NOT_FOUND)
 
 class FraudPatternAnalysisNotFoundException : ZipzaException(ErrorCode.FRAUD_PATTERN_ANALYSIS_NOT_FOUND)
+
+class PriceAnalysisNotFoundException : ZipzaException(ErrorCode.PRICE_ANALYSIS_NOT_FOUND)
+
+class DiagnosisReportNotFoundException : ZipzaException(ErrorCode.DIAGNOSIS_REPORT_NOT_FOUND)
