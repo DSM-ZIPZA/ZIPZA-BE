@@ -5,6 +5,11 @@ spring:
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   jpa:
     database: mysql
     hibernate:
@@ -42,3 +47,32 @@ jwt:
   header: ${HEADER}
   prefix: ${PREFIX}
   accessExp: ${ACCESS_EXP}
+
+apick:
+  url: https://apick.app
+  auth-key: ${APICK_AUTH_KEY}
+
+gemini:
+  url: https://generativelanguage.googleapis.com
+  api-key: ${GEMINI_API_KEY}
+  model: gemini-2.5-flash
+
+molit:
+  rent:
+    url: http://apis.data.go.kr
+    service-key: ${MOLIT_RENT_SERVICE_KEY}
+
+app:
+  frontend-redirect-url: ${FRONTEND_REDIRECT_URL:http://localhost:3000/auth/callback}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

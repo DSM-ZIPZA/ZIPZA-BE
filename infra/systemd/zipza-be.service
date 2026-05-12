@@ -1,0 +1,19 @@
+[Unit]
+Description=ZIPZA Spring Boot API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=zipza
+Group=zipza
+WorkingDirectory=/opt/zipza-be
+EnvironmentFile=/opt/zipza-be/zipza-be.env
+ExecStart=/usr/bin/java -jar /opt/zipza-be/app.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

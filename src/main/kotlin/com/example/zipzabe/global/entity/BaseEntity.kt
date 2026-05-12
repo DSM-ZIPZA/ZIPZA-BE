@@ -12,5 +12,5 @@ abstract class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(updatable = false, nullable = false)
-    val id: UUID = UUID.randomUUID()
+    val id: UUID? = null
 }

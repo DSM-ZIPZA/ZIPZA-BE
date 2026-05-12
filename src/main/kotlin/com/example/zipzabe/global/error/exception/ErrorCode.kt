@@ -14,6 +14,25 @@ enum class ErrorCode (
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User Not Found"),
     USER_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "User Already Exists"),
 
+    // Analysis
+    ANALYSIS_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Analysis Request Not Found"),
+    BUILDING_LEDGER_NOT_FOUND(HttpStatus.NOT_FOUND, "Building Ledger Not Found"),
+    REGISTRY_RAW_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Raw Not Found"),
+    REGISTRY_TITLE_NOT_FOUND(HttpStatus.NOT_FOUND, "Registry Title Not Found"),
+    PUBLIC_LEDGER_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "Public Ledger Summary Not Found"),
+    RIGHTS_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Rights Analysis Not Found"),
+    RECOVERY_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Recovery Analysis Not Found"),
+    GUARANTEE_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Guarantee Analysis Not Found"),
+    FRAUD_PATTERN_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Fraud Pattern Analysis Not Found"),
+    PRICE_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Price Analysis Not Found"),
+    DIAGNOSIS_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Diagnosis Report Not Found"),
+
+    // Auth
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Unauthorized"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Token"),
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Token Expired"),
+    BLACKLISTED_TOKEN(HttpStatus.UNAUTHORIZED, "Blacklisted Token"),
+
     // External API
     EXTERNAL_API_NOT_FOUND(HttpStatus.NOT_FOUND, "External API Resource Not Found"),
     EXTERNAL_API_BAD_REQUEST(HttpStatus.BAD_REQUEST, "External API Bad Request"),

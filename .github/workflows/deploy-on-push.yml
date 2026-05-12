@@ -1,0 +1,71 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    environment: production
+
+    env:
+      APP_NAME: zipza-be
+      EC2_APP_DIR: ${{ secrets.EC2_APP_DIR || '/opt/zipza-be' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build and test
+        run: ./gradlew clean build
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p deploy-artifact
+          JAR_PATH="$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -n 1)"
+          test -n "${JAR_PATH}"
+          cp "${JAR_PATH}" deploy-artifact/app.jar
+          cp scripts/deploy-remote.sh deploy-artifact/deploy-remote.sh
+
+      - name: Configure SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          set +x
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload artifact
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/ec2_key "${EC2_USER}@${EC2_HOST}" "mkdir -p '${EC2_APP_DIR}/releases'"
+          scp -i ~/.ssh/ec2_key deploy-artifact/app.jar "${EC2_USER}@${EC2_HOST}:${EC2_APP_DIR}/releases/app-${GITHUB_SHA}.jar"
+          scp -i ~/.ssh/ec2_key deploy-artifact/deploy-remote.sh "${EC2_USER}@${EC2_HOST}:${EC2_APP_DIR}/deploy-remote.sh"
+
+      - name: Restart service
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/ec2_key "${EC2_USER}@${EC2_HOST}" \
+            "chmod +x '${EC2_APP_DIR}/deploy-remote.sh' && '${EC2_APP_DIR}/deploy-remote.sh' '${EC2_APP_DIR}' 'app-${GITHUB_SHA}.jar' '${APP_NAME}'"

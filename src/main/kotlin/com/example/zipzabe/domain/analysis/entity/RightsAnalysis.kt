@@ -68,6 +68,14 @@ class RightsAnalysis(
     @Column(nullable = false, columnDefinition = "TEXT")
     val riskReason: String,
 
+    val latestOwnerChangeDate: LocalDate? = null,
+
+    @Column(nullable = false)
+    val trustEntryCount: Int = 0,
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    val summaryText: String = "",
+
     @Column(nullable = false, updatable = false)
     val analyzedAt: LocalDateTime = LocalDateTime.now(),
 ) : BaseEntity()
