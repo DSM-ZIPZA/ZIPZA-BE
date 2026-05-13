@@ -34,6 +34,7 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+    implementation("org.apache.pdfbox:pdfbox:3.0.7")
     compileOnly("org.projectlombok:lombok")
     runtimeOnly("com.mysql:mysql-connector-j")
     annotationProcessor("org.projectlombok:lombok")

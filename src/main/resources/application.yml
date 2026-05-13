@@ -62,6 +62,12 @@ molit:
     url: http://apis.data.go.kr
     service-key: ${MOLIT_RENT_SERVICE_KEY}
 
+google:
+  vision:
+    api-key: ${GOOGLE_VISION_API_KEY:}
+    render-dpi: ${GOOGLE_VISION_RENDER_DPI:300}
+    max-pages: ${GOOGLE_VISION_MAX_PAGES:20}
+
 app:
   frontend-redirect-url: ${FRONTEND_REDIRECT_URL:http://localhost:3000/auth/callback}
   cors:
