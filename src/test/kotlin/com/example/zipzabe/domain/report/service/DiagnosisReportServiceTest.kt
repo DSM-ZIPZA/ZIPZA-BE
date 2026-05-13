@@ -11,6 +11,7 @@ import com.example.zipzabe.domain.analysis.repository.GuaranteeAnalysisRepositor
 import com.example.zipzabe.domain.analysis.repository.PriceAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RecoveryAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RightsAnalysisRepository
+import com.example.zipzabe.domain.analysis.service.GeminiSummaryService
 import com.example.zipzabe.domain.property.entity.Property
 import com.example.zipzabe.domain.registry.entity.ParseStatus
 import com.example.zipzabe.domain.registry.entity.RegistryCandidate
@@ -46,6 +47,7 @@ class DiagnosisReportServiceTest {
     private val registryMortgageRepository = Mockito.mock(RegistryMortgageRepository::class.java)
     private val registryRestrictionRepository = Mockito.mock(RegistryRestrictionRepository::class.java)
     private val diagnosisReportRepository = Mockito.mock(DiagnosisReportRepository::class.java)
+    private val geminiSummaryService = Mockito.mock(GeminiSummaryService::class.java)
 
     private val service = DiagnosisReportService(
         analysisRequestRepository = analysisRequestRepository,
@@ -59,6 +61,7 @@ class DiagnosisReportServiceTest {
         registryRestrictionRepository = registryRestrictionRepository,
         diagnosisReportRepository = diagnosisReportRepository,
         objectMapper = jacksonObjectMapper(),
+        geminiSummaryService = geminiSummaryService,
     )
 
     @Test

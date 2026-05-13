@@ -11,6 +11,7 @@ import com.example.zipzabe.domain.analysis.repository.GuaranteeAnalysisRepositor
 import com.example.zipzabe.domain.analysis.repository.PriceAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RecoveryAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RightsAnalysisRepository
+import com.example.zipzabe.domain.analysis.service.GeminiSummaryService
 import com.example.zipzabe.domain.registry.entity.RegistryMortgage
 import com.example.zipzabe.domain.registry.entity.RegistryRestriction
 import com.example.zipzabe.domain.registry.repository.RegistryMortgageRepository
@@ -48,6 +49,7 @@ class DiagnosisReportService(
     private val registryRestrictionRepository: RegistryRestrictionRepository,
     private val diagnosisReportRepository: DiagnosisReportRepository,
     private val objectMapper: ObjectMapper,
+    private val geminiSummaryService: GeminiSummaryService,
 ) {
 
     @Transactional
@@ -148,6 +150,9 @@ class DiagnosisReportService(
             fraudPatternAnalysis != null,
         )
 
+        val top3 = topRisks(riskItems)
+        val aiSummary = runCatching { geminiSummaryService.summarize(buildRiskSummaryPrompt(top3)) }.getOrNull()
+
         val saved = diagnosisReportRepository.save(
             DiagnosisReport(
                 request = request,
@@ -158,8 +163,9 @@ class DiagnosisReportService(
                 confidenceScore = confidenceScore,
                 totalScore = totalScore,
                 verdict = verdict,
-                topRisks = objectMapper.writeValueAsString(topRisks(riskItems)),
+                topRisks = objectMapper.writeValueAsString(top3),
                 nextActions = objectMapper.writeValueAsString(defaultActions(nextActions, verdict)),
+                aiSummary = aiSummary,
             )
         )
 
@@ -324,6 +330,20 @@ class DiagnosisReportService(
         value?.replace("\\s".toRegex(), "")
             ?.contains(keyword.replace("\\s".toRegex(), ""), ignoreCase = true) == true
 
+    private fun buildRiskSummaryPrompt(risks: List<RiskItemResponse>): String {
+        val items = risks.mapIndexed { i, r ->
+            "${i + 1}. [${r.severity}] ${r.title}: ${r.detail}"
+        }.joinToString("\n")
+        return """
+            다음은 전세 계약 위험도 분석 결과 핵심 위험 항목입니다:
+
+            $items
+
+            임차인 관점에서 위 위험 항목들의 핵심 내용을 정확히 3줄로 요약해 주세요.
+            각 줄은 하나의 완결된 문장이어야 하며, 번호나 기호를 붙이지 마세요.
+        """.trimIndent()
+    }
+
     private fun toResponse(report: DiagnosisReport): DiagnosisReportResponse =
         DiagnosisReportResponse(
             requestId = requireNotNull(report.request.id),
@@ -336,6 +356,7 @@ class DiagnosisReportService(
             verdict = report.verdict,
             topRisks = readRisks(report.topRisks),
             nextActions = readActions(report.nextActions),
+            aiSummary = report.aiSummary,
             createdAt = report.createdAt,
         )
 
