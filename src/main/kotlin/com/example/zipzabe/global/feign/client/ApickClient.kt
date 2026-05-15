@@ -1,6 +1,7 @@
 package com.example.zipzabe.global.feign.client
 
 import com.example.zipzabe.domain.building.dto.BuildingRegisterListResponse
+import com.example.zipzabe.domain.registry.dto.ApickIrosIssueResponse
 import com.example.zipzabe.global.feign.config.ApickFeignConfig
 import feign.Response
 import org.springframework.cloud.openfeign.FeignClient
@@ -40,6 +41,24 @@ interface ApickClient {
         consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
     )
     fun getLandRegister(
+        @RequestHeader("CL_AUTH_KEY") authKey: String,
+        @RequestBody body: MultiValueMap<String, Any>
+    ): Response
+
+    @PostMapping(
+        value = ["/rest/iros/1"],
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
+    )
+    fun issueRealEstateRegistry(
+        @RequestHeader("CL_AUTH_KEY") authKey: String,
+        @RequestBody body: MultiValueMap<String, Any>
+    ): ApickIrosIssueResponse
+
+    @PostMapping(
+        value = ["/rest/iros_download/1"],
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
+    )
+    fun downloadRealEstateRegistry(
         @RequestHeader("CL_AUTH_KEY") authKey: String,
         @RequestBody body: MultiValueMap<String, Any>
     ): Response

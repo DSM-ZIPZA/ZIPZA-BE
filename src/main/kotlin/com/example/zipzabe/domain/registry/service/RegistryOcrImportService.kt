@@ -1,6 +1,7 @@
 package com.example.zipzabe.domain.registry.service
 
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
+import com.example.zipzabe.domain.registry.dto.RegistryApickOcrRequest
 import com.example.zipzabe.domain.registry.dto.RegistryOcrResponse
 import com.example.zipzabe.domain.registry.entity.ParseStatus
 import com.example.zipzabe.domain.registry.entity.RegistryCandidate
@@ -35,6 +36,7 @@ class RegistryOcrImportService(
     private val registryPdfRenderer: RegistryPdfRenderer,
     private val googleVisionOcrService: GoogleVisionOcrService,
     private val registryTextParser: RegistryTextParser,
+    private val apickRegistryPdfService: ApickRegistryPdfService,
 ) {
 
     @Transactional
@@ -43,9 +45,24 @@ class RegistryOcrImportService(
             throw ExternalApiBadRequestException()
         }
 
+        return importRegistryPdfBytes(requestId, file.bytes)
+    }
+
+    @Transactional
+    fun importRegistryFromApick(
+        requestId: UUID,
+        request: RegistryApickOcrRequest,
+    ): RegistryOcrResponse {
+        val analysisRequest = analysisRequestRepository.findById(requestId)
+            .orElseThrow { AnalysisRequestNotFoundException() }
+        val pdfBytes = apickRegistryPdfService.issueAndDownloadPdf(analysisRequest, request)
+
+        return importRegistryPdfBytes(requestId, pdfBytes)
+    }
+
+    private fun importRegistryPdfBytes(requestId: UUID, pdfBytes: ByteArray): RegistryOcrResponse {
         val request = analysisRequestRepository.findById(requestId)
             .orElseThrow { AnalysisRequestNotFoundException() }
-        val pdfBytes = file.bytes
         val sourceHash = sha256(pdfBytes)
         val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
             .getOrElse { throw ExternalApiBadRequestException() }

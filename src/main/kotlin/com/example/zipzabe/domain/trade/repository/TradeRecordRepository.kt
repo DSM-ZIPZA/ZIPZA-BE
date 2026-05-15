@@ -9,4 +9,6 @@ interface TradeRecordRepository : JpaRepository<TradeRecord, UUID> {
     fun findByProperty(property: Property): List<TradeRecord>
 
     fun findByPropertyOrderByContractDateDesc(property: Property): List<TradeRecord>
+
+    fun countByProperty(property: Property): Long
 }
