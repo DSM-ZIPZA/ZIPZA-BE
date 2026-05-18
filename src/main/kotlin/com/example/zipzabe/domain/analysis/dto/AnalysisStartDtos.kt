@@ -4,6 +4,7 @@ import com.example.zipzabe.domain.building.dto.BuildingLedgerFetchResponse
 import com.example.zipzabe.domain.registry.dto.RegistryOcrResponse
 import com.example.zipzabe.domain.report.dto.DiagnosisReportResponse
 import com.example.zipzabe.domain.report.dto.DiagnosisSupplementRequest
+import com.example.zipzabe.domain.report.dto.ManualCheckListResponse
 import com.example.zipzabe.domain.trade.dto.RentTradeFetchResponse
 import com.example.zipzabe.domain.trade.entity.BuildingType
 
@@ -36,4 +37,5 @@ data class AnalysisStartResponse(
     val recoveryAnalysis: RecoveryAnalysisResponse,
     val fraudPatternAnalysis: FraudPatternAnalysisResponse,
     val diagnosisReport: DiagnosisReportResponse,
+    val manualChecks: ManualCheckListResponse,
 )

@@ -26,6 +26,7 @@ enum class ErrorCode (
     FRAUD_PATTERN_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Fraud Pattern Analysis Not Found"),
     PRICE_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "Price Analysis Not Found"),
     DIAGNOSIS_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Diagnosis Report Not Found"),
+    MANUAL_CHECK_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Manual Check Item Not Found"),
 
     // Auth
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Unauthorized"),

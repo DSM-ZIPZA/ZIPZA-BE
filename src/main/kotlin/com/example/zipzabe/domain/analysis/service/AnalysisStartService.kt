@@ -7,6 +7,7 @@ import com.example.zipzabe.domain.building.service.BuildingLedgerImportService
 import com.example.zipzabe.domain.registry.dto.RegistryApickOcrRequest
 import com.example.zipzabe.domain.registry.service.RegistryOcrImportService
 import com.example.zipzabe.domain.report.service.DiagnosisReportService
+import com.example.zipzabe.domain.report.service.ManualCheckItemService
 import com.example.zipzabe.domain.trade.service.RentTradeService
 import org.springframework.stereotype.Service
 import java.util.UUID
@@ -22,6 +23,7 @@ class AnalysisStartService(
     private val recoveryAnalysisService: RecoveryAnalysisService,
     private val fraudPatternAnalysisService: FraudPatternAnalysisService,
     private val diagnosisReportService: DiagnosisReportService,
+    private val manualCheckItemService: ManualCheckItemService,
 ) {
 
     fun start(requestId: UUID, request: AnalysisStartRequest): AnalysisStartResponse {
@@ -51,6 +53,7 @@ class AnalysisStartService(
         val recoveryAnalysis = recoveryAnalysisService.analyze(requestId)
         val fraudPatternAnalysis = fraudPatternAnalysisService.analyze(requestId)
         val diagnosisReport = diagnosisReportService.createReport(requestId, request.diagnosisSupplement)
+        val manualChecks = manualCheckItemService.generate(requestId)
 
         return AnalysisStartResponse(
             buildingLedger = buildingLedger,
@@ -62,6 +65,7 @@ class AnalysisStartService(
             recoveryAnalysis = recoveryAnalysis,
             fraudPatternAnalysis = fraudPatternAnalysis,
             diagnosisReport = diagnosisReport,
+            manualChecks = manualChecks,
         )
     }
 }

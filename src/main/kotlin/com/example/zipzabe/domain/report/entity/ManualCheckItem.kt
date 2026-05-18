@@ -1,6 +1,7 @@
 package com.example.zipzabe.domain.report.entity
 
 import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
+import com.example.zipzabe.domain.report.dto.RiskSeverity
 import com.example.zipzabe.global.entity.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -20,17 +21,36 @@ class ManualCheckItem(
     val request: AnalysisRequest,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 40)
     val checkType: CheckType,
+
+    @Column(nullable = false, length = 200)
+    val title: String,
+
+    @Column(length = 50)
+    val badgeText: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    val severity: RiskSeverity,
 
     @Column(nullable = false, columnDefinition = "TEXT")
     val guideText: String,
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    val procedureSteps: String,
 
     @Column(length = 500)
     val officialUrl: String? = null,
 
     @Column(nullable = false)
+    val expertConsult: Boolean = false,
+
+    @Column(nullable = false)
     var isCompleted: Boolean = false,
 
     var checkedAt: LocalDateTime? = null,
+
+    @Column(nullable = false, updatable = false)
+    val createdAt: LocalDateTime = LocalDateTime.now(),
 ) : BaseEntity()
