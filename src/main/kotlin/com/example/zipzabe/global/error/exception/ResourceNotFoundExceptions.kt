@@ -23,3 +23,5 @@ class PriceAnalysisNotFoundException : ZipzaException(ErrorCode.PRICE_ANALYSIS_N
 class DiagnosisReportNotFoundException : ZipzaException(ErrorCode.DIAGNOSIS_REPORT_NOT_FOUND)
 
 class ManualCheckItemNotFoundException : ZipzaException(ErrorCode.MANUAL_CHECK_ITEM_NOT_FOUND)
+
+class ReminderNotFoundException : ZipzaException(ErrorCode.REMINDER_NOT_FOUND)
