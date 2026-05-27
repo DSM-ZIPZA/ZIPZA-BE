@@ -21,6 +21,7 @@ import com.example.zipzabe.domain.property.repository.PropertyRepository
 import com.example.zipzabe.domain.registry.repository.RegistryRawRepository
 import com.example.zipzabe.domain.report.repository.DiagnosisReportRepository
 import com.example.zipzabe.domain.trade.repository.TradeRecordRepository
+import com.example.zipzabe.domain.reminder.service.ReminderService
 import com.example.zipzabe.domain.user.facade.UserFacade
 import com.example.zipzabe.global.error.exception.AnalysisRequestNotFoundException
 import org.springframework.stereotype.Service
@@ -42,6 +43,7 @@ class AnalysisRequestService(
     private val recoveryAnalysisRepository: RecoveryAnalysisRepository,
     private val fraudPatternAnalysisRepository: FraudPatternAnalysisRepository,
     private val diagnosisReportRepository: DiagnosisReportRepository,
+    private val reminderService: ReminderService,
 ) {
 
     @Transactional
@@ -79,6 +81,7 @@ class AnalysisRequestService(
             ),
         )
 
+        reminderService.createBalanceReminders(analysisRequest, user)
         return AnalysisRequestResponse.from(analysisRequest)
     }
 
