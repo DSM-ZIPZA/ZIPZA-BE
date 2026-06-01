@@ -8,9 +8,11 @@ import java.util.UUID
 
 interface ReminderRepository : JpaRepository<Reminder, UUID> {
     fun findByUserOrderByRemindDateAsc(user: User): List<Reminder>
+
     fun findByUserAndIsSentFalseAndRemindDateLessThanEqualOrderByRemindDateAsc(
         user: User,
         date: LocalDate,
     ): List<Reminder>
+
     fun findByIdAndUser(id: UUID, user: User): Reminder?
 }
