@@ -18,6 +18,7 @@ class JwtAuthenticationFilter(
     private val tokenBlacklistService: TokenBlacklistService,
     @Value("\${jwt.header}") private val header: String,
     @Value("\${jwt.prefix}") private val prefix: String,
+    @Value("\${jwt.cookie-name:app_session_id}") private val cookieName: String,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -44,8 +45,14 @@ class JwtAuthenticationFilter(
     }
 
     private fun resolveToken(request: HttpServletRequest): String? {
-        val bearer = request.getHeader(header) ?: return null
-        if (!bearer.startsWith("$prefix ")) return null
-        return bearer.removePrefix("$prefix ")
+        val bearer = request.getHeader(header)
+        if (bearer != null && bearer.startsWith("$prefix ")) {
+            return bearer.removePrefix("$prefix ")
+        }
+
+        return request.cookies
+            ?.firstOrNull { it.name == cookieName }
+            ?.value
+            ?.takeIf { it.isNotBlank() }
     }
 }

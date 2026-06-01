@@ -46,6 +46,7 @@ jwt:
   header: ${HEADER}
   prefix: ${PREFIX}
   accessExp: ${ACCESS_EXP}
+  cookie-name: ${JWT_COOKIE_NAME:app_session_id}
 
 apick:
   url: https://apick.app

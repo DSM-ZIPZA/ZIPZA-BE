@@ -12,12 +12,23 @@ class LogoutService(
     private val tokenBlacklistService: TokenBlacklistService,
     @Value("\${jwt.header}") private val header: String,
     @Value("\${jwt.prefix}") private val prefix: String,
+    @Value("\${jwt.cookie-name:app_session_id}") private val cookieName: String,
 ) {
     fun execute(request: HttpServletRequest) {
-        val bearer = request.getHeader(header) ?: return
-        if (!bearer.startsWith("$prefix ")) return
-        val token = bearer.removePrefix("$prefix ")
+        val token = resolveToken(request) ?: return
         val remaining = jwtProvider.getExpiration(token)
         if (remaining > 0) tokenBlacklistService.addToBlacklist(token, remaining)
+    }
+
+    private fun resolveToken(request: HttpServletRequest): String? {
+        val bearer = request.getHeader(header)
+        if (bearer != null && bearer.startsWith("$prefix ")) {
+            return bearer.removePrefix("$prefix ")
+        }
+
+        return request.cookies
+            ?.firstOrNull { it.name == cookieName }
+            ?.value
+            ?.takeIf { it.isNotBlank() }
     }
 }
