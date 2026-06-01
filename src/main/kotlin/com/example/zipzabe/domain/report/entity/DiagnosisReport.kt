@@ -49,6 +49,9 @@ class DiagnosisReport(
     @Column(nullable = false, columnDefinition = "JSON")
     val nextActions: String,
 
+    @Column(columnDefinition = "TEXT")
+    var aiSummary: String? = null,
+
     @Column(length = 100)
     var shareToken: String? = null,
 

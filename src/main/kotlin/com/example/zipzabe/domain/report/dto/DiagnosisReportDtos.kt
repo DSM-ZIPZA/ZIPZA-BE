@@ -47,6 +47,7 @@ data class DiagnosisReportResponse(
     val verdict: Verdict,
     val topRisks: List<RiskItemResponse>,
     val nextActions: List<NextActionResponse>,
+    val aiSummary: String?,
     val createdAt: LocalDateTime,
 )
 

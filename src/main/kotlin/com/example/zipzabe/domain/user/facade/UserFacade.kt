@@ -5,18 +5,24 @@ import com.example.zipzabe.domain.user.exception.UserNotFoundException
 import com.example.zipzabe.domain.user.repository.UserRepository
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
+import java.util.UUID
 
 @Component
 class UserFacade(
     private val userRepository: UserRepository
 ) {
     fun getCurrentUser(): User {
-        val email = SecurityContextHolder.getContext()
+        val principal = SecurityContextHolder.getContext()
             .authentication
-            ?.name
+            ?.principal
             ?: throw UserNotFoundException
 
-        return userRepository.findByEmail(email)
-            ?: throw UserNotFoundException
+        val userId = try {
+            UUID.fromString(principal.toString())
+        } catch (e: IllegalArgumentException) {
+            throw UserNotFoundException
+        }
+
+        return userRepository.findById(userId).orElseThrow { UserNotFoundException }
     }
 }

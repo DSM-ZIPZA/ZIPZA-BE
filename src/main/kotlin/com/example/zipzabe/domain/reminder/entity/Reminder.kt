@@ -27,14 +27,14 @@ class Reminder(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    val reminderType: ReminderType,
+    var reminderType: ReminderType,
 
     @Column(nullable = false)
-    val remindDate: LocalDate,
+    var remindDate: LocalDate,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    val channel: ReminderChannel,
+    var channel: ReminderChannel,
 
     @Column(nullable = false)
     var isSent: Boolean = false,

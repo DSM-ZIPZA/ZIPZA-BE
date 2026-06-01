@@ -9,11 +9,11 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping
 class AuthController(
     private val logoutService: LogoutService,
 ) {
-    @DeleteMapping("/logout")
+    @DeleteMapping("/auth/logout", "/api/auth/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun logout(request: HttpServletRequest) = logoutService.execute(request)
 }
