@@ -9,4 +9,11 @@ interface PropertyRepository : JpaRepository<Property, UUID> {
         roadAddress: String,
         jibunAddress: String,
     ): List<Property>
+
+    fun findByLatitudeBetweenAndLongitudeBetween(
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double,
+    ): List<Property>
 }

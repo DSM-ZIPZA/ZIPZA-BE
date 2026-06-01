@@ -12,4 +12,6 @@ interface AnalysisRequestRepository : JpaRepository<AnalysisRequest, UUID> {
     fun findByIdAndUser(id: UUID, user: User): AnalysisRequest?
 
     fun findTopByPropertyAndUserOrderByRequestedAtDesc(property: Property, user: User): AnalysisRequest?
+
+    fun findByPropertyIn(properties: List<Property>): List<AnalysisRequest>
 }

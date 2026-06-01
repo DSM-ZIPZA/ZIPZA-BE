@@ -7,4 +7,6 @@ import java.util.UUID
 
 interface RecoveryAnalysisRepository : JpaRepository<RecoveryAnalysis, UUID> {
     fun findTopByRequestOrderByAnalyzedAtDesc(request: AnalysisRequest): RecoveryAnalysis?
+
+    fun findByRequestIn(requests: List<AnalysisRequest>): List<RecoveryAnalysis>
 }
