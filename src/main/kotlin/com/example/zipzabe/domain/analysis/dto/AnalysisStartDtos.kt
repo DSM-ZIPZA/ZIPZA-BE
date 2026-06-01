@@ -28,14 +28,20 @@ data class RegistryApickStartRequest(
 )
 
 data class AnalysisStartResponse(
-    val buildingLedger: BuildingLedgerFetchResponse,
-    val registryOcr: RegistryOcrResponse,
-    val rentTrades: RentTradeFetchResponse,
-    val priceAnalysis: PriceAnalysisResponse,
-    val publicLedgerSummary: PublicLedgerSummaryResponse,
-    val guaranteeAnalysis: GuaranteeAnalysisResponse,
-    val recoveryAnalysis: RecoveryAnalysisResponse,
-    val fraudPatternAnalysis: FraudPatternAnalysisResponse,
-    val diagnosisReport: DiagnosisReportResponse,
-    val manualChecks: ManualCheckListResponse,
+    val buildingLedger: BuildingLedgerFetchResponse?,
+    val registryOcr: RegistryOcrResponse?,
+    val rentTrades: RentTradeFetchResponse?,
+    val priceAnalysis: PriceAnalysisResponse?,
+    val publicLedgerSummary: PublicLedgerSummaryResponse?,
+    val guaranteeAnalysis: GuaranteeAnalysisResponse?,
+    val recoveryAnalysis: RecoveryAnalysisResponse?,
+    val fraudPatternAnalysis: FraudPatternAnalysisResponse?,
+    val diagnosisReport: DiagnosisReportResponse?,
+    val manualChecks: ManualCheckListResponse?,
+    val skippedSteps: List<AnalysisStartSkippedStep> = emptyList(),
+)
+
+data class AnalysisStartSkippedStep(
+    val step: String,
+    val reason: String,
 )
