@@ -26,8 +26,7 @@ class JwtAuthenticationFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        val token = resolveToken(request)
-        if (token != null) {
+        val authenticated = resolveTokens(request).any { token ->
             try {
                 if (tokenBlacklistService.isBlacklisted(token)) throw BlacklistedTokenException()
                 val userId = jwtProvider.getUserId(token)
@@ -37,22 +36,33 @@ class JwtAuthenticationFilter(
                     listOf(SimpleGrantedAuthority("ROLE_USER")),
                 )
                 SecurityContextHolder.getContext().authentication = auth
+                true
             } catch (e: ZipzaException) {
                 SecurityContextHolder.clearContext()
+                false
             }
         }
+
+        if (!authenticated) {
+            SecurityContextHolder.clearContext()
+        }
+
         filterChain.doFilter(request, response)
     }
 
-    private fun resolveToken(request: HttpServletRequest): String? {
+    private fun resolveTokens(request: HttpServletRequest): List<String> {
+        val tokens = mutableListOf<String>()
         val bearer = request.getHeader(header)
         if (bearer != null && bearer.startsWith("$prefix ")) {
-            return bearer.removePrefix("$prefix ")
+            tokens.add(bearer.removePrefix("$prefix "))
         }
 
-        return request.cookies
+        request.cookies
             ?.firstOrNull { it.name == cookieName }
             ?.value
             ?.takeIf { it.isNotBlank() }
+            ?.let { tokens.add(it) }
+
+        return tokens.distinct()
     }
 }

@@ -9,9 +9,9 @@ import com.example.zipzabe.global.error.exception.ErrorCode
 import com.example.zipzabe.global.error.exception.ErrorResponse
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -26,8 +26,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    @Value("\${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
-    private val allowedOriginsProperty: String,
 ) {
     @Bean
     fun filterChain(
@@ -51,6 +49,7 @@ class SecurityConfig(
             }
             .authorizeHttpRequests { auth ->
                 auth
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .requestMatchers(
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
@@ -87,13 +86,12 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration()
-        config.allowedOrigins = allowedOriginsProperty
-            .split(",")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-        config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+        config.allowedOriginPatterns = listOf("*")
+        config.allowedMethods = listOf("*")
         config.allowedHeaders = listOf("*")
+        config.exposedHeaders = listOf("*")
         config.allowCredentials = true
+        config.maxAge = 3600
 
         val source = UrlBasedCorsConfigurationSource()
         source.registerCorsConfiguration("/**", config)
