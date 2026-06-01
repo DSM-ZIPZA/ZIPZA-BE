@@ -8,6 +8,7 @@ import com.example.zipzabe.global.error.GlobalExceptionFilter
 import com.example.zipzabe.global.error.exception.ErrorCode
 import com.example.zipzabe.global.error.exception.ErrorResponse
 import com.fasterxml.jackson.databind.ObjectMapper
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -61,19 +62,26 @@ class SecurityConfig(
             }
             .exceptionHandling { e ->
                 e.authenticationEntryPoint { _, response, _ ->
-                    response.status = ErrorCode.UNAUTHORIZED.httpStatus.value()
-                    response.contentType = MediaType.APPLICATION_JSON_VALUE
-                    response.characterEncoding = "UTF-8"
-                    objectMapper.writeValue(
-                        response.writer,
-                        ErrorResponse(ErrorCode.UNAUTHORIZED.httpStatus, ErrorCode.UNAUTHORIZED.message),
-                    )
+                    writeUnauthorized(response, objectMapper)
+                }
+                e.accessDeniedHandler { _, response, _ ->
+                    writeUnauthorized(response, objectMapper)
                 }
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(GlobalExceptionFilter(objectMapper), JwtAuthenticationFilter::class.java)
 
         return http.build()
+    }
+
+    private fun writeUnauthorized(response: HttpServletResponse, objectMapper: ObjectMapper) {
+        response.status = ErrorCode.UNAUTHORIZED.httpStatus.value()
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        response.characterEncoding = "UTF-8"
+        objectMapper.writeValue(
+            response.writer,
+            ErrorResponse(ErrorCode.UNAUTHORIZED.httpStatus, ErrorCode.UNAUTHORIZED.message),
+        )
     }
 
     @Bean
