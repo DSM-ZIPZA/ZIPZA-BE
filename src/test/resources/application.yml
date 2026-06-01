@@ -53,4 +53,7 @@ gemini:
   model: gemini-test-model
 
 app:
-  frontend-redirect-url: http://localhost:3000/auth/callback
+  frontend-redirect-url: http://localhost:3000/oauth/callback
+
+kakao:
+  rest-api-key: test-kakao-rest-key

@@ -7,12 +7,12 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping
 class UserController(
     private val queryUserInfoService: QueryUserInfoService
 ) {
 
-    @GetMapping("/me")
+    @GetMapping("/users/me", "/api/users/me")
     fun getUserInfo(): UserInfoResponse {
         return queryUserInfoService.execute()
     }
