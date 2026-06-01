@@ -4,6 +4,7 @@ import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
 import com.example.zipzabe.domain.analysis.entity.AnalysisStatus
 import com.example.zipzabe.domain.analysis.entity.ContractType
 import com.example.zipzabe.domain.property.entity.Property
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -11,9 +12,12 @@ import java.util.UUID
 data class AnalysisRequestCreateRequest(
     val property: PropertyCreateRequest,
     val contractType: ContractType,
+    @Schema(description = "보증금. 만원 단위")
     val depositAmount: Long,
+    @Schema(description = "월세. 만원 단위")
     val monthlyRent: Long? = null,
     val floor: Int,
+    @Schema(description = "전용면적. ㎡ 단위")
     val exclusiveArea: Double,
     val contractDate: LocalDate,
     val balanceDate: LocalDate,
@@ -40,9 +44,12 @@ data class AnalysisRequestResponse(
     val requestId: UUID,
     val property: PropertyResponse,
     val contractType: ContractType,
+    @Schema(description = "보증금. 만원 단위")
     val depositAmount: Long,
+    @Schema(description = "월세. 만원 단위")
     val monthlyRent: Long?,
     val floor: Int,
+    @Schema(description = "전용면적. ㎡ 단위")
     val exclusiveArea: Double,
     val contractDate: LocalDate,
     val balanceDate: LocalDate,
