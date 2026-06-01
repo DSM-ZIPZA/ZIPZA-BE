@@ -7,12 +7,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.filter.OncePerRequestFilter
 
 class GlobalExceptionFilter(
     private val objectMapper: ObjectMapper
 ) : OncePerRequestFilter() {
+    private val log = LoggerFactory.getLogger(GlobalExceptionFilter::class.java)
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -22,8 +24,29 @@ class GlobalExceptionFilter(
         try {
             filterChain.doFilter(request, response)
         } catch (e: ZipzaException) {
+            log.warn(
+                "Filtered ZipzaException. method={} uri={} query={} status={} errorCode={} remoteAddr={} userAgent={}",
+                request.method,
+                request.requestURI,
+                request.queryString,
+                e.errorCode.httpStatus.value(),
+                e.errorCode.name,
+                request.remoteAddr,
+                request.getHeader("User-Agent"),
+                e,
+            )
             writeErrorResponse(response, e.errorCode)
         } catch (e: Exception) {
+            log.error(
+                "Filtered unhandled exception. method={} uri={} query={} status={} remoteAddr={} userAgent={}",
+                request.method,
+                request.requestURI,
+                request.queryString,
+                ErrorCode.INTERNAL_SERVER_ERROR.httpStatus.value(),
+                request.remoteAddr,
+                request.getHeader("User-Agent"),
+                e,
+            )
             writeErrorResponse(response, ErrorCode.INTERNAL_SERVER_ERROR)
         }
     }

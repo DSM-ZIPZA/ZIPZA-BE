@@ -5,6 +5,7 @@ import com.example.zipzabe.global.error.exception.ZipzaException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -20,6 +21,7 @@ class JwtAuthenticationFilter(
     @Value("\${jwt.prefix}") private val prefix: String,
     @Value("\${jwt.cookie-name:app_session_id}") private val cookieName: String,
 ) : OncePerRequestFilter() {
+    private val log = LoggerFactory.getLogger(JwtAuthenticationFilter::class.java)
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -36,15 +38,34 @@ class JwtAuthenticationFilter(
                     listOf(SimpleGrantedAuthority("ROLE_USER")),
                 )
                 SecurityContextHolder.getContext().authentication = auth
+                log.debug(
+                    "JWT authentication succeeded. method={} uri={} userId={}",
+                    request.method,
+                    request.requestURI,
+                    userId,
+                )
                 true
             } catch (e: ZipzaException) {
                 SecurityContextHolder.clearContext()
+                log.warn(
+                    "JWT authentication failed. method={} uri={} reason={}",
+                    request.method,
+                    request.requestURI,
+                    e.errorCode.name,
+                )
                 false
             }
         }
 
         if (!authenticated) {
             SecurityContextHolder.clearContext()
+            log.debug(
+                "No valid JWT authentication. method={} uri={} headerPresent={} cookiePresent={}",
+                request.method,
+                request.requestURI,
+                request.getHeader(header) != null,
+                request.cookies?.any { it.name == cookieName } == true,
+            )
         }
 
         filterChain.doFilter(request, response)

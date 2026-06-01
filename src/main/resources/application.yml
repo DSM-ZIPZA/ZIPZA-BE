@@ -85,3 +85,11 @@ management:
     health:
       probes:
         enabled: true
+
+logging:
+  level:
+    com.example.zipzabe: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
