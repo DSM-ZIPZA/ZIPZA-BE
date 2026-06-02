@@ -4,6 +4,7 @@ import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
 import com.example.zipzabe.domain.analysis.entity.AnalysisStatus
 import com.example.zipzabe.domain.analysis.entity.ContractType.JEONSE
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
+import com.example.zipzabe.domain.address.service.AddressService
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.property.entity.Property
 import com.example.zipzabe.domain.trade.entity.BuildingType
@@ -24,12 +25,14 @@ import java.util.UUID
 class RentTradeServiceTest {
 
     private val analysisRequestRepository = Mockito.mock(AnalysisRequestRepository::class.java)
+    private val addressService = Mockito.mock(AddressService::class.java)
     private val buildingLedgerRepository = Mockito.mock(BuildingLedgerRepository::class.java)
     private val tradeRecordRepository = Mockito.mock(TradeRecordRepository::class.java)
     private val molitRentClient = Mockito.mock(MolitRentClient::class.java)
 
     private val service = RentTradeService(
         analysisRequestRepository = analysisRequestRepository,
+        addressService = addressService,
         buildingLedgerRepository = buildingLedgerRepository,
         tradeRecordRepository = tradeRecordRepository,
         molitRentClient = molitRentClient,

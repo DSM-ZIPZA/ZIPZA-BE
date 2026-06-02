@@ -6,7 +6,7 @@ data class AverageSalePriceResponse(
     val query: String?,
     val latitude: Double?,
     val longitude: Double?,
-    @Schema(description = "평균 추정 매매가. 만원 단위")
+    @Schema(description = "평균 전세 보증금. 만원 단위")
     val averageSalePriceManwon: Long?,
     val sampleCount: Int,
 )

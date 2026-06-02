@@ -1,6 +1,7 @@
 package com.example.zipzabe.domain.trade.service
 
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
+import com.example.zipzabe.domain.address.service.AddressService
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.property.entity.Property
 import com.example.zipzabe.domain.trade.dto.MolitRentApiResponse
@@ -30,6 +31,7 @@ import java.util.UUID
 @Service
 class RentTradeService(
     private val analysisRequestRepository: AnalysisRequestRepository,
+    private val addressService: AddressService,
     private val buildingLedgerRepository: BuildingLedgerRepository,
     private val tradeRecordRepository: TradeRecordRepository,
     private val molitRentClient: MolitRentClient,
@@ -110,6 +112,34 @@ class RentTradeService(
         )
     }
 
+    fun fetchRecentJeonseDepositsByAddress(
+        query: String,
+        buildingName: String?,
+        isApartment: Boolean?,
+        months: Int = DEFAULT_SEARCH_MONTHS,
+    ): List<Long> {
+        val resolved = addressService.resolve(query)
+        val lawdCd = extractLawdCd(resolved.administrativeCode)
+        val buildingTypes = resolveBuildingTypes(buildingName, isApartment)
+        val dealMonths = buildDealMonths(LocalDate.now(), months)
+        val matcher = TradeItemMatcher(
+            neighborhood = resolved.neighborhood,
+            jibunAddress = resolved.jibunAddress,
+            buildingName = buildingName,
+        )
+
+        return buildingTypes
+            .flatMap { buildingType ->
+                dealMonths.flatMap { dealYm ->
+                    fetchMonthlyItems(buildingType, lawdCd, dealYm)
+                        .filter { matcher.matches(it) }
+                        .filter { (parseLongAmount(it.monthlyRent) ?: 0L) == 0L }
+                        .mapNotNull { parseLongAmount(it.depositAmount) }
+                }
+            }
+            .filter { it > 0L }
+    }
+
     private fun fetchMonthlyItems(
         buildingType: BuildingType,
         lawdCd: String,
@@ -185,6 +215,19 @@ class RentTradeService(
             source.contains("다세대") || source.contains("빌라") -> BuildingType.MULTI_FAMILY
             source.contains("단독") || source.contains("다가구") -> BuildingType.DETACHED_HOUSE
             else -> BuildingType.ETC
+        }
+    }
+
+    private fun resolveBuildingTypes(buildingName: String?, isApartment: Boolean?): List<BuildingType> {
+        if (isApartment == true) return listOf(BuildingType.APARTMENT)
+        val normalized = normalize(buildingName.orEmpty())
+        return when {
+            normalized.contains("아파트") -> listOf(BuildingType.APARTMENT)
+            normalized.contains("오피스텔") -> listOf(BuildingType.OFFICETEL)
+            normalized.contains("연립") -> listOf(BuildingType.ROW_HOUSE)
+            normalized.contains("다세대") || normalized.contains("빌라") -> listOf(BuildingType.MULTI_FAMILY)
+            normalized.contains("단독") || normalized.contains("다가구") -> listOf(BuildingType.DETACHED_HOUSE)
+            else -> listOf(BuildingType.APARTMENT, BuildingType.MULTI_FAMILY, BuildingType.ROW_HOUSE, BuildingType.OFFICETEL)
         }
     }
 
@@ -334,6 +377,39 @@ class RentTradeService(
             .replace("다세대", "")
             .replace("빌라", "")
 
+    private inner class TradeItemMatcher(
+        neighborhood: String,
+        jibunAddress: String,
+        buildingName: String?,
+    ) {
+        private val normalizedNeighborhood = normalize(neighborhood)
+        private val normalizedJibunAddress = normalize(jibunAddress)
+        private val normalizedBuildingName = normalizeBuildingName(buildingName.orEmpty())
+
+        fun matches(item: MolitRentApiResponse.Item): Boolean {
+            val itemDong = normalize(item.legalDong.orEmpty())
+            if (itemDong.isNotBlank() && normalizedNeighborhood.isNotBlank() &&
+                !itemDong.contains(normalizedNeighborhood) && !normalizedNeighborhood.contains(itemDong)
+            ) {
+                return false
+            }
+
+            val itemBuildingName = normalizeBuildingName(item.buildingName.orEmpty())
+            val buildingNameMatched = normalizedBuildingName.isNotBlank() &&
+                itemBuildingName.isNotBlank() &&
+                (itemBuildingName.contains(normalizedBuildingName) || normalizedBuildingName.contains(itemBuildingName))
+
+            val itemJibun = normalize(item.jibun.orEmpty())
+            val jibunMatched = itemJibun.isNotBlank() && normalizedJibunAddress.contains(itemJibun)
+
+            return if (normalizedBuildingName.isNotBlank()) {
+                buildingNameMatched || jibunMatched
+            } else {
+                jibunMatched || itemDong.isNotBlank()
+            }
+        }
+    }
+
     private data class TradeRecordKey(
         val buildingType: BuildingType,
         val contractType: ContractType,
@@ -349,7 +425,7 @@ class RentTradeService(
     companion object {
         private const val NUM_OF_ROWS = 1000
         private const val LAWD_CD_LENGTH = 5
-        private const val DEFAULT_SEARCH_MONTHS = 24
+        private const val DEFAULT_SEARCH_MONTHS = 12
         private const val MIN_SEARCH_MONTHS = 1
         private const val MAX_SEARCH_MONTHS = 60
         private val YEAR_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM")

@@ -11,7 +11,7 @@ import com.example.zipzabe.domain.trade.entity.BuildingType
 data class AnalysisStartRequest(
     val building: BuildingLedgerStartRequest,
     val registry: RegistryApickStartRequest = RegistryApickStartRequest(),
-    val rentTradeMonths: Int = 24,
+    val rentTradeMonths: Int = 12,
     val rentTradeBuildingType: BuildingType? = null,
     val diagnosisSupplement: DiagnosisSupplementRequest = DiagnosisSupplementRequest(),
 )

@@ -75,6 +75,9 @@ class AnalysisDetailService(
             latitude = property.latitude.takeIf { it != 0.0 },
             longitude = property.longitude.takeIf { it != 0.0 },
             radiusMeters = DETAIL_AVERAGE_PRICE_RADIUS_METERS,
+            buildingName = property.buildingName,
+            isApartment = property.isApartment,
+            months = PRICE_HISTORY_MONTHS,
         ).averageSalePriceManwon
         val estimatedPropertyValue = averageSalePrice
             ?: recoveryAnalysis?.estimatedPropertyValue
@@ -126,7 +129,13 @@ class AnalysisDetailService(
     }
 
     private fun buildPriceHistory(request: com.example.zipzabe.domain.analysis.entity.AnalysisRequest): List<PricePointResponse> {
-        val records = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property).asReversed()
+        val allRecords = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)
+            .filter { it.contractType == ContractType.JEONSE }
+        val latestDate = allRecords.maxOfOrNull { it.contractDate } ?: request.contractDate
+        val cutoffDate = YearMonth.from(latestDate).minusMonths((PRICE_HISTORY_MONTHS - 1).toLong()).atDay(1)
+        val records = allRecords
+            .filter { !it.contractDate.isBefore(cutoffDate) }
+            .asReversed()
         val history = records
             .groupBy { YearMonth.from(it.contractDate).toString() }
             .map { (month, items) ->
@@ -232,5 +241,6 @@ class AnalysisDetailService(
     companion object {
         private const val JEONSE_RATE = 0.70
         private const val DETAIL_AVERAGE_PRICE_RADIUS_METERS = 250.0
+        private const val PRICE_HISTORY_MONTHS = 12
     }
 }
