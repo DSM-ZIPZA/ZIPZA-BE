@@ -76,8 +76,8 @@ class AnalysisDetailService(
             longitude = property.longitude.takeIf { it != 0.0 },
             radiusMeters = DETAIL_AVERAGE_PRICE_RADIUS_METERS,
         ).averageSalePriceManwon
-        val estimatedPropertyValue = recoveryAnalysis?.estimatedPropertyValue
-            ?: averageSalePrice
+        val estimatedPropertyValue = averageSalePrice
+            ?: recoveryAnalysis?.estimatedPropertyValue
             ?: guaranteeAnalysis?.estimatedPropertyValue
             ?: estimatePropertyValue(property, request.depositAmount)
 
