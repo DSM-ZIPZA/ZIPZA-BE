@@ -15,6 +15,7 @@ import com.example.zipzabe.domain.analysis.repository.RecoveryAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RightsAnalysisRepository
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.property.dto.PropertyListingResponse
+import com.example.zipzabe.domain.property.service.PropertyPriceService
 import com.example.zipzabe.domain.registry.repository.RegistryMortgageRepository
 import com.example.zipzabe.domain.registry.repository.RegistryOwnershipRepository
 import com.example.zipzabe.domain.registry.repository.RegistryRawRepository
@@ -53,6 +54,7 @@ class AnalysisDetailService(
     private val recoveryAnalysisRepository: RecoveryAnalysisRepository,
     private val guaranteeAnalysisRepository: GuaranteeAnalysisRepository,
     private val diagnosisReportRepository: DiagnosisReportRepository,
+    private val propertyPriceService: PropertyPriceService,
 ) {
     @Transactional(readOnly = true)
     fun getDetail(requestId: UUID): AnalysisDetailResponse {
@@ -68,7 +70,14 @@ class AnalysisDetailService(
         val recoveryAnalysis = recoveryAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val guaranteeAnalysis = guaranteeAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val diagnosisReport = diagnosisReportRepository.findTopByRequestOrderByCreatedAtDesc(request)
+        val averageSalePrice = propertyPriceService.getAverageSalePrice(
+            query = property.roadAddress.ifBlank { property.jibunAddress },
+            latitude = property.latitude.takeIf { it != 0.0 },
+            longitude = property.longitude.takeIf { it != 0.0 },
+            radiusMeters = DETAIL_AVERAGE_PRICE_RADIUS_METERS,
+        ).averageSalePriceManwon
         val estimatedPropertyValue = recoveryAnalysis?.estimatedPropertyValue
+            ?: averageSalePrice
             ?: guaranteeAnalysis?.estimatedPropertyValue
             ?: estimatePropertyValue(property, request.depositAmount)
 
@@ -222,5 +231,6 @@ class AnalysisDetailService(
 
     companion object {
         private const val JEONSE_RATE = 0.70
+        private const val DETAIL_AVERAGE_PRICE_RADIUS_METERS = 250.0
     }
 }
