@@ -9,6 +9,7 @@ import com.example.zipzabe.domain.analysis.dto.RegistrationRecordResponse
 import com.example.zipzabe.domain.analysis.dto.RegistrationSectionResponse
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
 import com.example.zipzabe.domain.analysis.repository.BuildingAnalysisRepository
+import com.example.zipzabe.domain.analysis.repository.GuaranteeAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.PriceAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RecoveryAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RightsAnalysisRepository
@@ -22,6 +23,7 @@ import com.example.zipzabe.domain.registry.repository.RegistryTitleRepository
 import com.example.zipzabe.domain.report.dto.NextActionResponse
 import com.example.zipzabe.domain.report.dto.RiskItemResponse
 import com.example.zipzabe.domain.report.repository.DiagnosisReportRepository
+import com.example.zipzabe.domain.trade.entity.ContractType
 import com.example.zipzabe.domain.trade.repository.TradeRecordRepository
 import com.example.zipzabe.domain.user.facade.UserFacade
 import com.example.zipzabe.global.error.exception.AnalysisRequestNotFoundException
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth
 import java.util.UUID
+import kotlin.math.roundToLong
 
 @Service
 class AnalysisDetailService(
@@ -48,6 +51,7 @@ class AnalysisDetailService(
     private val buildingAnalysisRepository: BuildingAnalysisRepository,
     private val rightsAnalysisRepository: RightsAnalysisRepository,
     private val recoveryAnalysisRepository: RecoveryAnalysisRepository,
+    private val guaranteeAnalysisRepository: GuaranteeAnalysisRepository,
     private val diagnosisReportRepository: DiagnosisReportRepository,
 ) {
     @Transactional(readOnly = true)
@@ -62,7 +66,11 @@ class AnalysisDetailService(
         val buildingAnalysis = buildingAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val rightsAnalysis = rightsAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val recoveryAnalysis = recoveryAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
+        val guaranteeAnalysis = guaranteeAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val diagnosisReport = diagnosisReportRepository.findTopByRequestOrderByCreatedAtDesc(request)
+        val estimatedPropertyValue = recoveryAnalysis?.estimatedPropertyValue
+            ?: guaranteeAnalysis?.estimatedPropertyValue
+            ?: estimatePropertyValue(property, request.depositAmount)
 
         val topRisks = diagnosisReport?.topRisks?.let { readList<RiskItemResponse>(it) }.orEmpty()
         val nextActions = diagnosisReport?.nextActions?.let { readList<NextActionResponse>(it) }.orEmpty()
@@ -83,9 +91,9 @@ class AnalysisDetailService(
                 floor = request.floor,
                 totalFloors = ledger?.floorsAboveGround,
                 exclusiveAreaM2 = request.exclusiveArea,
-                estimatedPropertyValueManwon = recoveryAnalysis?.estimatedPropertyValue,
+                estimatedPropertyValueManwon = estimatedPropertyValue,
             ),
-            priceHistory = buildPriceHistory(request.property),
+            priceHistory = buildPriceHistory(request),
             registrationSections = buildRegistrationSections(registryRaw),
             buildingLandAnalysis = BuildingLandAnalysisDetailResponse(
                 usage = ledger?.mainPurposeName,
@@ -108,9 +116,9 @@ class AnalysisDetailService(
         )
     }
 
-    private fun buildPriceHistory(property: com.example.zipzabe.domain.property.entity.Property): List<PricePointResponse> {
-        val records = tradeRecordRepository.findByPropertyOrderByContractDateDesc(property).asReversed()
-        return records
+    private fun buildPriceHistory(request: com.example.zipzabe.domain.analysis.entity.AnalysisRequest): List<PricePointResponse> {
+        val records = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property).asReversed()
+        val history = records
             .groupBy { YearMonth.from(it.contractDate).toString() }
             .map { (month, items) ->
                 val values = items.map { it.depositAmount }
@@ -123,6 +131,41 @@ class AnalysisDetailService(
                     volume = items.size,
                 )
             }
+        if (history.isNotEmpty()) return history
+
+        return listOf(
+            PricePointResponse(
+                date = YearMonth.from(request.contractDate).toString(),
+                open = request.depositAmount,
+                high = request.depositAmount,
+                low = request.depositAmount,
+                close = request.depositAmount,
+                volume = 1,
+            )
+        )
+    }
+
+    private fun estimatePropertyValue(
+        property: com.example.zipzabe.domain.property.entity.Property,
+        depositAmount: Long,
+    ): Long? {
+        val jeonseDeposits = tradeRecordRepository
+            .findByPropertyOrderByContractDateDesc(property)
+            .filter { it.contractType == ContractType.JEONSE }
+            .map { it.depositAmount }
+        val baseDeposit = medianOrNull(jeonseDeposits) ?: depositAmount.takeIf { it > 0L }
+        return baseDeposit?.let { (it / JEONSE_RATE).roundToLong() }
+    }
+
+    private fun medianOrNull(values: List<Long>): Long? {
+        if (values.isEmpty()) return null
+        val sorted = values.sorted()
+        val mid = sorted.size / 2
+        return if (sorted.size % 2 == 0) {
+            (sorted[mid - 1] + sorted[mid]) / 2
+        } else {
+            sorted[mid]
+        }
     }
 
     private fun buildRegistrationSections(
@@ -176,4 +219,8 @@ class AnalysisDetailService(
         runCatching {
             objectMapper.readValue(json, object : TypeReference<List<T>>() {})
         }.getOrDefault(emptyList())
+
+    companion object {
+        private const val JEONSE_RATE = 0.70
+    }
 }

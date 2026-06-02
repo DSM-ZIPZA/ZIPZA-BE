@@ -5,9 +5,10 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 
 interface PropertyRepository : JpaRepository<Property, UUID> {
-    fun findByRoadAddressContainingOrJibunAddressContaining(
+    fun findByRoadAddressContainingOrJibunAddressContainingOrBuildingNameContaining(
         roadAddress: String,
         jibunAddress: String,
+        buildingName: String,
     ): List<Property>
 
     fun findByLatitudeBetweenAndLongitudeBetween(

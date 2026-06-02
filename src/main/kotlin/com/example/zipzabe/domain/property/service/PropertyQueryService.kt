@@ -40,7 +40,11 @@ class PropertyQueryService(
         val properties = if (query.isNullOrBlank()) {
             propertyRepository.findAll()
         } else {
-            propertyRepository.findByRoadAddressContainingOrJibunAddressContaining(query, query)
+            propertyRepository.findByRoadAddressContainingOrJibunAddressContainingOrBuildingNameContaining(
+                query,
+                query,
+                query,
+            )
         }
         val listings = properties
             .asSequence()
