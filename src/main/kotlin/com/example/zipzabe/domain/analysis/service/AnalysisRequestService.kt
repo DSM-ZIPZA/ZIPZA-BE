@@ -15,6 +15,7 @@ import com.example.zipzabe.domain.analysis.repository.GuaranteeAnalysisRepositor
 import com.example.zipzabe.domain.analysis.repository.PriceAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RecoveryAnalysisRepository
 import com.example.zipzabe.domain.analysis.repository.RightsAnalysisRepository
+import com.example.zipzabe.domain.address.service.AddressService
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.property.entity.Property
 import com.example.zipzabe.domain.property.repository.PropertyRepository
@@ -31,6 +32,7 @@ import java.util.UUID
 @Service
 class AnalysisRequestService(
     private val userFacade: UserFacade,
+    private val addressService: AddressService,
     private val propertyRepository: PropertyRepository,
     private val analysisRequestRepository: AnalysisRequestRepository,
     private val buildingLedgerRepository: BuildingLedgerRepository,
@@ -49,16 +51,9 @@ class AnalysisRequestService(
     @Transactional
     fun create(request: AnalysisRequestCreateRequest): AnalysisRequestResponse {
         val user = userFacade.getCurrentUser()
-        val roadAddress = firstNonBlank(
-            request.property.roadAddress,
-            request.property.jibunAddress,
-            request.property.buildingName,
-        )
-        val jibunAddress = firstNonBlank(
-            request.property.jibunAddress,
-            request.property.roadAddress,
-            request.property.buildingName,
-        )
+        val resolvedAddress = resolvePropertyAddress(request)
+        val roadAddress = resolvedAddress.roadAddress
+        val jibunAddress = resolvedAddress.jibunAddress
         val property = propertyRepository.save(
             Property(
                 roadAddress = roadAddress,
@@ -93,6 +88,36 @@ class AnalysisRequestService(
 
         reminderService.createBalanceReminders(analysisRequest, user)
         return AnalysisRequestResponse.from(analysisRequest)
+    }
+
+    private fun resolvePropertyAddress(request: AnalysisRequestCreateRequest): ResolvedPropertyAddress {
+        val requestedRoadAddress = request.property.roadAddress.trim()
+        val requestedJibunAddress = request.property.jibunAddress.trim()
+        val fallbackAddress = firstNonBlank(
+            requestedRoadAddress,
+            requestedJibunAddress,
+            request.property.buildingName,
+        )
+        val needsJibunResolution = requestedJibunAddress.isBlank() ||
+            normalizeAddress(requestedJibunAddress) == normalizeAddress(requestedRoadAddress)
+
+        if (needsJibunResolution && fallbackAddress.isNotBlank()) {
+            val resolved = runCatching { addressService.resolve(fallbackAddress) }.getOrNull()
+            val resolvedJibunAddress = resolved?.jibunAddress?.trim().orEmpty()
+            if (resolvedJibunAddress.isNotBlank() &&
+                normalizeAddress(resolvedJibunAddress) != normalizeAddress(requestedRoadAddress)
+            ) {
+                return ResolvedPropertyAddress(
+                    roadAddress = firstNonBlank(resolved?.roadAddress, requestedRoadAddress, fallbackAddress),
+                    jibunAddress = resolvedJibunAddress,
+                )
+            }
+        }
+
+        return ResolvedPropertyAddress(
+            roadAddress = firstNonBlank(requestedRoadAddress, requestedJibunAddress, request.property.buildingName),
+            jibunAddress = firstNonBlank(requestedJibunAddress, requestedRoadAddress, request.property.buildingName),
+        )
     }
 
     @Transactional(readOnly = true)
@@ -182,4 +207,12 @@ class AnalysisRequestService(
 
     private fun firstNonBlank(vararg values: String?): String =
         values.firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) }.orEmpty()
+
+    private fun normalizeAddress(value: String): String =
+        value.replace("\\s+".toRegex(), "")
+
+    private data class ResolvedPropertyAddress(
+        val roadAddress: String,
+        val jibunAddress: String,
+    )
 }

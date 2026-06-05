@@ -33,8 +33,7 @@ class ApickRegistryPdfService(
         var issueType = ""
         val issueBody = LinkedMultiValueMap<String, Any>().apply {
             val uniqueNumber = request.uniqueNum?.trim().orEmpty()
-            val requestedAddress = request.address?.trim()?.takeIf { it.isNotBlank() }
-            val address = resolveIssueAddress(analysisRequest, requestedAddress)
+            val address = resolveJibunIssueAddress(analysisRequest, request.address?.trim()?.takeIf { it.isNotBlank() })
             val type = request.type?.takeIf { it.isNotBlank() } ?: defaultRegistryType(analysisRequest)
 
             if (uniqueNumber.isNotBlank()) {
@@ -196,17 +195,12 @@ class ApickRegistryPdfService(
             ?: headers[name.lowercase()]?.firstOrNull()
             ?: headers[name.uppercase()]?.firstOrNull()
 
-    private fun buildAddress(request: AnalysisRequest): String {
-        val baseAddress = request.property.jibunAddress.ifBlank { request.property.roadAddress }
-        return appendDetailAddress(baseAddress, request.property.detailAddress)
-    }
-
-    private fun resolveIssueAddress(request: AnalysisRequest, requestedAddress: String?): String {
-        val propertyAddress = request.property.jibunAddress
+    private fun resolveJibunIssueAddress(request: AnalysisRequest, requestedAddress: String?): String {
+        val jibunFirstAddress = request.property.jibunAddress
             .ifBlank { request.property.roadAddress }
             .takeIf { it.isNotBlank() }
 
-        return appendDetailAddress(propertyAddress ?: requestedAddress.orEmpty(), request.property.detailAddress)
+        return appendDetailAddress(jibunFirstAddress ?: requestedAddress.orEmpty(), request.property.detailAddress)
     }
 
     private fun appendDetailAddress(baseAddress: String, detailAddress: String?): String {
