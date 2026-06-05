@@ -26,6 +26,7 @@ class ApickRegistryPdfService(
             val uniqueNumber = request.uniqueNum?.trim().orEmpty()
             val address = request.address?.trim()
                 ?.takeIf { it.isNotBlank() }
+                ?.let { appendDetailAddress(it, analysisRequest.property.detailAddress) }
                 ?: buildAddress(analysisRequest)
             val type = request.type?.takeIf { it.isNotBlank() } ?: defaultRegistryType(analysisRequest)
 
@@ -108,15 +109,33 @@ class ApickRegistryPdfService(
             ?: headers()[name.lowercase()]?.firstOrNull()
             ?: headers()[name.uppercase()]?.firstOrNull()
 
-    private fun buildAddress(request: AnalysisRequest): String =
-        listOfNotNull(
-            request.property.roadAddress.ifBlank { request.property.jibunAddress }
-                .takeIf { it.isNotBlank() },
-            request.property.detailAddress?.takeIf { it.isNotBlank() },
-        ).joinToString(" ")
+    private fun buildAddress(request: AnalysisRequest): String {
+        val baseAddress = request.property.roadAddress.ifBlank { request.property.jibunAddress }
+        return appendDetailAddress(baseAddress, request.property.detailAddress)
+    }
+
+    private fun appendDetailAddress(baseAddress: String, detailAddress: String?): String {
+        val base = baseAddress.trim()
+        val detail = detailAddress?.trim().orEmpty()
+        if (base.isBlank()) return detail
+        if (detail.isBlank()) return base
+
+        return if (normalizeAddress(base).contains(normalizeAddress(detail))) {
+            base
+        } else {
+            "$base $detail"
+        }
+    }
+
+    private fun normalizeAddress(value: String): String =
+        value.replace("\\s+".toRegex(), "")
 
     private fun defaultRegistryType(request: AnalysisRequest): String =
-        if (request.property.isApartment) "집합건물" else "건물"
+        if (request.property.isApartment || request.property.detailAddress?.isNotBlank() == true) {
+            "집합건물"
+        } else {
+            "건물"
+        }
 
     companion object {
         private const val MAX_DOWNLOAD_ATTEMPTS = 10
