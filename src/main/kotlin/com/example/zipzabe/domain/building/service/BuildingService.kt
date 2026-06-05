@@ -5,27 +5,18 @@ import com.example.zipzabe.domain.building.dto.BuildingRegisterRequest
 import com.example.zipzabe.global.error.exception.ExternalApiBadRequestException
 import com.example.zipzabe.global.error.exception.ExternalApiException
 import com.example.zipzabe.global.error.exception.ExternalApiNotFoundException
+import com.example.zipzabe.global.apick.ApickMultipartClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
-import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.client.RestClient
-import org.springframework.web.client.RestClientResponseException
 
 @Service
 class BuildingService(
-    @Value("\${apick.url}") apickUrl: String,
-    @Value("\${apick.auth-key}") private val authKey: String,
+    private val apickMultipartClient: ApickMultipartClient,
     private val objectMapper: ObjectMapper,
 ) {
     private val log = LoggerFactory.getLogger(BuildingService::class.java)
-    private val restClient = RestClient.builder()
-        .baseUrl(apickUrl.trimEnd('/'))
-        .build()
 
     fun getBuildingRegisterPdf(request: BuildingRegisterRequest): ByteArray {
         return runCatching { requestBuildingRegisterPdf(request) }
@@ -48,12 +39,12 @@ class BuildingService(
 
     private fun requestBuildingRegisterPdf(request: BuildingRegisterRequest): ByteArray {
         repeat(MAX_REGISTER_ATTEMPTS) { attempt ->
-            val body = LinkedMultiValueMap<String, Any>().apply {
-                add("address", request.address)
-                add("b_name", request.bName)
-                add("dong", request.dong)
-                add("ho", request.ho)
-            }
+            val body = mapOf(
+                "address" to request.address,
+                "b_name" to request.bName,
+                "dong" to request.dong,
+                "ho" to request.ho,
+            )
             log.info(
                 "Requesting Apick building register. address={} bName={} dong={} ho={} attempt={}",
                 request.address,
@@ -93,9 +84,7 @@ class BuildingService(
     }
 
     fun getBuildingRegisterList(address: String): BuildingRegisterListResponse {
-        val body = LinkedMultiValueMap<String, Any>().apply {
-            add("address", address)
-        }
+        val body = mapOf("address" to address)
         val response = postMultipart("/rest/get_building_register_list", body)
         logUnexpectedResponse("buildingRegisterList", response, response.body ?: ByteArray(0))
         ensureSuccessfulPdfResponse(response)
@@ -177,21 +166,8 @@ class BuildingService(
         return score
     }
 
-    private fun postMultipart(path: String, body: LinkedMultiValueMap<String, Any>): ResponseEntity<ByteArray> =
-        try {
-            restClient.post()
-                .uri(path)
-                .header("CL_AUTH_KEY", authKey)
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(body)
-                .retrieve()
-                .toEntity(ByteArray::class.java)
-        } catch (e: RestClientResponseException) {
-            ResponseEntity
-                .status(e.statusCode)
-                .headers(e.responseHeaders ?: HttpHeaders())
-                .body(e.responseBodyAsByteArray)
-        }
+    private fun postMultipart(path: String, body: Map<String, String>): ResponseEntity<ByteArray> =
+        apickMultipartClient.post(path, body)
 
     private fun ensureSuccessfulPdfResponse(response: ResponseEntity<ByteArray>) {
         when (response.statusCode.value()) {

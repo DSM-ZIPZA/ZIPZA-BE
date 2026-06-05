@@ -1,54 +1,45 @@
 package com.example.zipzabe.domain.registry.service
 
 import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
+import com.example.zipzabe.domain.address.service.AddressService
 import com.example.zipzabe.domain.registry.dto.ApickIrosIssueResponse
 import com.example.zipzabe.domain.registry.dto.RegistryApickOcrRequest
+import com.example.zipzabe.global.apick.ApickMultipartClient
 import com.example.zipzabe.global.error.exception.ExternalApiBadRequestException
 import com.example.zipzabe.global.error.exception.ExternalApiException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
-import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.client.RestClient
-import org.springframework.web.client.RestClientResponseException
 
 @Service
 class ApickRegistryPdfService(
-    @Value("\${apick.url}") apickUrl: String,
-    @Value("\${apick.auth-key}") private val authKey: String,
+    private val apickMultipartClient: ApickMultipartClient,
+    private val addressService: AddressService,
     private val objectMapper: ObjectMapper,
 ) {
     private val log = LoggerFactory.getLogger(ApickRegistryPdfService::class.java)
-    private val restClient = RestClient.builder()
-        .baseUrl(apickUrl.trimEnd('/'))
-        .build()
 
     fun issueAndDownloadPdf(analysisRequest: AnalysisRequest, request: RegistryApickOcrRequest): ByteArray {
         var issueAddress = ""
         var issueUniqueNumber = ""
         var issueType = ""
-        val issueBody = LinkedMultiValueMap<String, Any>().apply {
-            val uniqueNumber = request.uniqueNum?.trim().orEmpty()
-            val address = resolveJibunIssueAddress(analysisRequest, request.address?.trim()?.takeIf { it.isNotBlank() })
-            val type = request.type?.takeIf { it.isNotBlank() } ?: defaultRegistryType(analysisRequest)
+        val uniqueNumber = request.uniqueNum?.trim().orEmpty()
+        val address = resolveJibunIssueAddress(analysisRequest, request.address?.trim()?.takeIf { it.isNotBlank() })
+        val type = request.type?.takeIf { it.isNotBlank() } ?: defaultRegistryType(analysisRequest)
+        val issueBody = mutableMapOf<String, String>()
 
-            if (uniqueNumber.isNotBlank()) {
-                add("unique_num", uniqueNumber)
-                issueUniqueNumber = uniqueNumber
-            } else if (address.isNotBlank()) {
-                add("address", address)
-                issueAddress = address
-            } else {
-                throw ExternalApiBadRequestException()
-            }
-
-            add("type", type)
-            issueType = type
+        if (uniqueNumber.isNotBlank()) {
+            issueBody["unique_num"] = uniqueNumber
+            issueUniqueNumber = uniqueNumber
+        } else if (address.isNotBlank()) {
+            issueBody["address"] = address
+            issueAddress = address
+        } else {
+            throw ExternalApiBadRequestException()
         }
+        issueBody["type"] = type
+        issueType = type
 
         log.info(
             "Requesting Apick registry issue. requestId={} propertyId={} addressPresent={} uniqueNumPresent={} type={} address={}",
@@ -84,10 +75,10 @@ class ApickRegistryPdfService(
 
     private fun downloadPdfWithPolling(icId: Long): ByteArray {
         repeat(MAX_DOWNLOAD_ATTEMPTS) { attempt ->
-            val body = LinkedMultiValueMap<String, Any>().apply {
-                add("ic_id", icId.toString())
-                add("format", "pdf")
-            }
+            val body = mapOf(
+                "ic_id" to icId.toString(),
+                "format" to "pdf",
+            )
             val response = postMultipart("/rest/iros_download/1", body)
             val bytes = response.body ?: ByteArray(0)
 
@@ -110,21 +101,8 @@ class ApickRegistryPdfService(
         throw ExternalApiException()
     }
 
-    private fun postMultipart(path: String, body: LinkedMultiValueMap<String, Any>): ResponseEntity<ByteArray> =
-        try {
-            restClient.post()
-                .uri(path)
-                .header("CL_AUTH_KEY", authKey)
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(body)
-                .retrieve()
-                .toEntity(ByteArray::class.java)
-        } catch (e: RestClientResponseException) {
-            ResponseEntity
-                .status(e.statusCode)
-                .headers(e.responseHeaders ?: HttpHeaders())
-                .body(e.responseBodyAsByteArray)
-        }
+    private fun postMultipart(path: String, body: Map<String, String>): ResponseEntity<ByteArray> =
+        apickMultipartClient.post(path, body)
 
     private fun ensureSuccessfulResponse(response: ResponseEntity<ByteArray>) {
         if (!response.statusCode.is2xxSuccessful) {
@@ -196,12 +174,29 @@ class ApickRegistryPdfService(
             ?: headers[name.uppercase()]?.firstOrNull()
 
     private fun resolveJibunIssueAddress(request: AnalysisRequest, requestedAddress: String?): String {
-        val jibunFirstAddress = request.property.jibunAddress
-            .ifBlank { request.property.roadAddress }
+        val roadAddress = request.property.roadAddress.trim()
+        val storedJibunAddress = request.property.jibunAddress.trim()
+        val resolvedJibunAddress = if (
+            storedJibunAddress.isBlank() ||
+            normalizeAddress(storedJibunAddress) == normalizeAddress(roadAddress)
+        ) {
+            resolveJibunAddress(roadAddress.ifBlank { requestedAddress.orEmpty() })
+        } else {
+            storedJibunAddress
+        }
+        val jibunFirstAddress = resolvedJibunAddress
+            .ifBlank { storedJibunAddress }
+            .ifBlank { roadAddress }
             .takeIf { it.isNotBlank() }
 
         return appendDetailAddress(jibunFirstAddress ?: requestedAddress.orEmpty(), request.property.detailAddress)
     }
+
+    private fun resolveJibunAddress(address: String): String =
+        runCatching { addressService.resolve(address).jibunAddress.trim() }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() && normalizeAddress(it) != normalizeAddress(address) }
+            .orEmpty()
 
     private fun appendDetailAddress(baseAddress: String, detailAddress: String?): String {
         val base = baseAddress.trim()

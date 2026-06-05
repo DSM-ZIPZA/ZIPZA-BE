@@ -52,7 +52,7 @@ class RentTradeService(
         val request = analysisRequestRepository.findById(requestId)
             .orElseThrow(::AnalysisRequestNotFoundException)
         val property = request.property
-        val lawdCd = extractLawdCd(property.administrativeCode)
+        val lawdCd = resolveLawdCd(property)
         val targetBuildingType = resolveBuildingType(property, buildingType)
         val dealMonths = buildDealMonths(request.contractDate, months)
 
@@ -248,6 +248,15 @@ class RentTradeService(
             throw ExternalApiBadRequestException()
         }
         return digits.take(LAWD_CD_LENGTH)
+    }
+
+    private fun resolveLawdCd(property: Property): String {
+        val current = runCatching { extractLawdCd(property.administrativeCode) }.getOrNull()
+        if (current != null) return current
+
+        val query = property.roadAddress.ifBlank { property.jibunAddress }
+        val resolvedCode = runCatching { addressService.resolve(query).administrativeCode }.getOrDefault("")
+        return extractLawdCd(resolvedCode)
     }
 
     private fun matchesProperty(item: MolitRentApiResponse.Item, property: Property): Boolean {

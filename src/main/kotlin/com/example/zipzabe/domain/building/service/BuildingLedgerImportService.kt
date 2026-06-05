@@ -1,6 +1,7 @@
 package com.example.zipzabe.domain.building.service
 
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
+import com.example.zipzabe.domain.address.service.AddressService
 import com.example.zipzabe.domain.building.dto.BuildingLedgerFetchRequest
 import com.example.zipzabe.domain.building.dto.BuildingLedgerFetchResponse
 import com.example.zipzabe.domain.building.dto.BuildingRegisterRequest
@@ -20,6 +21,7 @@ class BuildingLedgerImportService(
     private val analysisRequestRepository: AnalysisRequestRepository,
     private val buildingLedgerRepository: BuildingLedgerRepository,
     private val buildingService: BuildingService,
+    private val addressService: AddressService,
     private val registryPdfRenderer: RegistryPdfRenderer,
     private val googleVisionOcrService: GoogleVisionOcrService,
     private val buildingLedgerTextParser: BuildingLedgerTextParser,
@@ -30,7 +32,7 @@ class BuildingLedgerImportService(
         val analysisRequest = analysisRequestRepository.findById(requestId)
             .orElseThrow { AnalysisRequestNotFoundException() }
         val property = analysisRequest.property
-        val address = property.jibunAddress.ifBlank { property.roadAddress }
+        val address = resolveJibunAddress(property.jibunAddress, property.roadAddress)
             .ifBlank { property.buildingName.orEmpty() }
             .trim()
         if (address.isBlank()) {
@@ -82,4 +84,19 @@ class BuildingLedgerImportService(
             isViolationBuilding = ledger.isViolationBuilding,
         )
     }
+
+    private fun resolveJibunAddress(jibunAddress: String, roadAddress: String): String {
+        val storedJibun = jibunAddress.trim()
+        val road = roadAddress.trim()
+        if (storedJibun.isNotBlank() && normalizeAddress(storedJibun) != normalizeAddress(road)) {
+            return storedJibun
+        }
+        return runCatching { addressService.resolve(road.ifBlank { storedJibun }).jibunAddress.trim() }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() && normalizeAddress(it) != normalizeAddress(road) }
+            ?: storedJibun.ifBlank { road }
+    }
+
+    private fun normalizeAddress(value: String): String =
+        value.replace("\\s+".toRegex(), "")
 }
