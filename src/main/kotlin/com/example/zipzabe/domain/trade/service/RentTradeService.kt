@@ -210,6 +210,7 @@ class RentTradeService(
         val source = normalize("${property.buildingName.orEmpty()} $ledgerPurpose")
 
         return when {
+            source.contains("아파트") -> BuildingType.APARTMENT
             source.contains("오피스텔") -> BuildingType.OFFICETEL
             source.contains("연립") -> BuildingType.ROW_HOUSE
             source.contains("다세대") || source.contains("빌라") -> BuildingType.MULTI_FAMILY

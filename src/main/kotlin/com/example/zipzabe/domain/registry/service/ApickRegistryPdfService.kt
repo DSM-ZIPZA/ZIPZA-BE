@@ -33,10 +33,8 @@ class ApickRegistryPdfService(
         var issueType = ""
         val issueBody = LinkedMultiValueMap<String, Any>().apply {
             val uniqueNumber = request.uniqueNum?.trim().orEmpty()
-            val address = request.address?.trim()
-                ?.takeIf { it.isNotBlank() }
-                ?.let { appendDetailAddress(it, analysisRequest.property.detailAddress) }
-                ?: buildAddress(analysisRequest)
+            val requestedAddress = request.address?.trim()?.takeIf { it.isNotBlank() }
+            val address = resolveIssueAddress(analysisRequest, requestedAddress)
             val type = request.type?.takeIf { it.isNotBlank() } ?: defaultRegistryType(analysisRequest)
 
             if (uniqueNumber.isNotBlank()) {
@@ -63,6 +61,7 @@ class ApickRegistryPdfService(
             issueAddress,
         )
         val issueResponseBytes = postMultipart("/rest/iros/1", issueBody).let { response ->
+            logUnexpectedResponse("registryIssue", response, response.body ?: ByteArray(0))
             ensureSuccessfulResponse(response)
             response.body ?: ByteArray(0)
         }
@@ -103,6 +102,7 @@ class ApickRegistryPdfService(
                 return@repeat
             }
 
+            logUnexpectedResponse("registryDownload", response, bytes)
             ensureSuccessfulResponse(response)
             throwIfApickJsonError(bytes, "registryDownload")
             throw ExternalApiException()
@@ -131,6 +131,25 @@ class ApickRegistryPdfService(
         if (!response.statusCode.is2xxSuccessful) {
             throw ExternalApiException()
         }
+    }
+
+    private fun logUnexpectedResponse(
+        operation: String,
+        response: ResponseEntity<ByteArray>,
+        bytes: ByteArray,
+    ) {
+        if (response.statusCode.is2xxSuccessful && isPdf(response, bytes)) return
+        if (isProcessing(response, bytes)) return
+
+        val bodyText = runCatching { bytes.decodeToString() }.getOrDefault("")
+        log.warn(
+            "Apick {} unexpected response. status={} resultHeader={} contentType={} body={}",
+            operation,
+            response.statusCode.value(),
+            response.headerValue("result"),
+            response.headerValue("content-type"),
+            bodyText.take(MAX_LOG_BODY_CHARS),
+        )
     }
 
     private fun isPdf(response: ResponseEntity<ByteArray>, bytes: ByteArray): Boolean {
@@ -178,8 +197,16 @@ class ApickRegistryPdfService(
             ?: headers[name.uppercase()]?.firstOrNull()
 
     private fun buildAddress(request: AnalysisRequest): String {
-        val baseAddress = request.property.roadAddress.ifBlank { request.property.jibunAddress }
+        val baseAddress = request.property.jibunAddress.ifBlank { request.property.roadAddress }
         return appendDetailAddress(baseAddress, request.property.detailAddress)
+    }
+
+    private fun resolveIssueAddress(request: AnalysisRequest, requestedAddress: String?): String {
+        val propertyAddress = request.property.jibunAddress
+            .ifBlank { request.property.roadAddress }
+            .takeIf { it.isNotBlank() }
+
+        return appendDetailAddress(propertyAddress ?: requestedAddress.orEmpty(), request.property.detailAddress)
     }
 
     private fun appendDetailAddress(baseAddress: String, detailAddress: String?): String {

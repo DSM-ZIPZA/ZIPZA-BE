@@ -83,6 +83,7 @@ class BuildingService(
                 return@repeat
             }
 
+            logUnexpectedResponse("buildingRegister", response, bytes)
             ensureSuccessfulPdfResponse(response)
             throwIfApickJsonError(bytes, "buildingRegister")
             throw ExternalApiException()
@@ -96,6 +97,7 @@ class BuildingService(
             add("address", address)
         }
         val response = postMultipart("/rest/get_building_register_list", body)
+        logUnexpectedResponse("buildingRegisterList", response, response.body ?: ByteArray(0))
         ensureSuccessfulPdfResponse(response)
         val bytes = response.body ?: ByteArray(0)
         throwIfApickJsonError(bytes, "buildingRegisterList")
@@ -198,6 +200,25 @@ class BuildingService(
             404 -> throw ExternalApiNotFoundException()
             else -> throw ExternalApiException()
         }
+    }
+
+    private fun logUnexpectedResponse(
+        operation: String,
+        response: ResponseEntity<ByteArray>,
+        bytes: ByteArray,
+    ) {
+        if (response.statusCode.is2xxSuccessful && isPdf(response, bytes)) return
+        if (isProcessing(response, bytes)) return
+
+        val bodyText = runCatching { bytes.decodeToString() }.getOrDefault("")
+        log.warn(
+            "Apick {} unexpected response. status={} resultHeader={} contentType={} body={}",
+            operation,
+            response.statusCode.value(),
+            response.headerValue("result"),
+            response.headerValue("content-type"),
+            bodyText.take(MAX_LOG_BODY_CHARS),
+        )
     }
 
     private fun isPdf(response: ResponseEntity<ByteArray>, bytes: ByteArray): Boolean {
