@@ -30,6 +30,15 @@ class AnalysisStartService(
     private val log = LoggerFactory.getLogger(AnalysisStartService::class.java)
 
     fun start(requestId: UUID, request: AnalysisStartRequest): AnalysisStartResponse {
+        log.info(
+            "Analysis start requested. requestId={} buildingDong={} buildingHo={} registryAddressPresent={} registryUniqueNumPresent={} rentTradeMonths={}",
+            requestId,
+            request.building.dong,
+            request.building.ho,
+            request.registry.address?.isNotBlank() == true,
+            request.registry.uniqueNum?.isNotBlank() == true,
+            request.rentTradeMonths,
+        )
         val skippedSteps = mutableListOf<AnalysisStartSkippedStep>()
 
         val buildingLedger = runStep(requestId, "buildingLedger", skippedSteps) {
@@ -124,8 +133,11 @@ class AnalysisStartService(
         step: String,
         skippedSteps: MutableList<AnalysisStartSkippedStep>,
         block: () -> T,
-    ): T? =
-        runCatching(block).getOrElse { e ->
+    ): T? {
+        log.info("Analysis step started. requestId={} step={}", requestId, step)
+        return runCatching(block).onSuccess {
+            log.info("Analysis step completed. requestId={} step={}", requestId, step)
+        }.getOrElse { e ->
             log.warn(
                 "Analysis step skipped. requestId={} step={} reason={}",
                 requestId,
@@ -139,4 +151,5 @@ class AnalysisStartService(
             )
             null
         }
+    }
 }

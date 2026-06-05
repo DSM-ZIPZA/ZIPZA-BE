@@ -45,9 +45,25 @@ class BuildingService(
             add("dong", request.dong)
             add("ho", request.ho)
         }
+        log.info(
+            "Requesting Apick building register. address={} bName={} dong={} ho={}",
+            request.address,
+            request.bName,
+            request.dong,
+            request.ho,
+        )
         val response = apickClient.getBuildingRegister(authKey, body)
         ensureSuccessfulPdfResponse(response)
-        return response.body()?.asInputStream()?.use { it.readBytes() } ?: throw ExternalApiException()
+        val bytes = response.body()?.asInputStream()?.use { it.readBytes() } ?: throw ExternalApiException()
+        log.info(
+            "Apick building register PDF downloaded. address={} bName={} dong={} ho={} bytes={}",
+            request.address,
+            request.bName,
+            request.dong,
+            request.ho,
+            bytes.size,
+        )
+        return bytes
     }
 
     fun getBuildingRegisterList(address: String): BuildingRegisterListResponse {

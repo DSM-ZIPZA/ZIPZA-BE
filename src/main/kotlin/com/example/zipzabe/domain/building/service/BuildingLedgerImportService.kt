@@ -30,10 +30,16 @@ class BuildingLedgerImportService(
         val analysisRequest = analysisRequestRepository.findById(requestId)
             .orElseThrow { AnalysisRequestNotFoundException() }
         val property = analysisRequest.property
+        val address = property.roadAddress.ifBlank { property.jibunAddress }
+            .ifBlank { property.buildingName.orEmpty() }
+            .trim()
+        if (address.isBlank()) {
+            throw ExternalApiBadRequestException()
+        }
 
         val pdfBytes = buildingService.getBuildingRegisterPdf(
             BuildingRegisterRequest(
-                address = property.roadAddress,
+                address = address,
                 bName = property.buildingName ?: "",
                 dong = fetchRequest.dong,
                 ho = fetchRequest.ho,

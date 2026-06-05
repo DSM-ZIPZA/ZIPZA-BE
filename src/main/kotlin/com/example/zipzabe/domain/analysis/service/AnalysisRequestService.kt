@@ -49,10 +49,20 @@ class AnalysisRequestService(
     @Transactional
     fun create(request: AnalysisRequestCreateRequest): AnalysisRequestResponse {
         val user = userFacade.getCurrentUser()
+        val roadAddress = firstNonBlank(
+            request.property.roadAddress,
+            request.property.jibunAddress,
+            request.property.buildingName,
+        )
+        val jibunAddress = firstNonBlank(
+            request.property.jibunAddress,
+            request.property.roadAddress,
+            request.property.buildingName,
+        )
         val property = propertyRepository.save(
             Property(
-                roadAddress = request.property.roadAddress,
-                jibunAddress = request.property.jibunAddress,
+                roadAddress = roadAddress,
+                jibunAddress = jibunAddress,
                 detailAddress = request.property.detailAddress,
                 buildingManagementNumber = request.property.buildingManagementNumber,
                 postalCode = request.property.postalCode,
@@ -169,4 +179,7 @@ class AnalysisRequestService(
         return analysisRequestRepository.findByIdAndUser(requestId, user)
             ?: throw AnalysisRequestNotFoundException()
     }
+
+    private fun firstNonBlank(vararg values: String?): String =
+        values.firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) }.orEmpty()
 }
