@@ -23,9 +23,11 @@ class RegistryTextParserTest {
             순위번호 등 기 목 적 접 수 등 기 원 인 권리자 및 기타사항
             1 소유권보존 2019년10월14일 소유자 한국자산신탁주식회사 110111-2196304
             2 소유권이전 2019년11월21일 2017년7월21일 소유자 강봉구 770615-*******
+            제110792호 매매     경기도 수원시 권선구 호매실로165번길
             【  을      구  】 ( 소유권 이외의 권리에 관한 사항 )
             순위번호 등 기 목 적 접수 등기원인 권리자 및 기타사항
             1 근저당권설정 2019년11월21일 2019년9월18일 채권최고액 금240,000,000원
+            제110793호 설정계약 채무자 강봉구
             채무자 강봉구
             근저당권자 농협은행주식회사 110111-4809385
         """.trimIndent()
@@ -44,8 +46,11 @@ class RegistryTextParserTest {
         assertEquals(72.9161, parsed.title.exclusiveArea)
         assertEquals(2, parsed.ownerships.size)
         assertEquals("강봉구", parsed.ownerships.last().ownerName)
+        assertEquals("매매", parsed.ownerships.last().registrationCause)
+        assertEquals(java.time.LocalDate.of(2017, 7, 21), parsed.ownerships.last().registrationCauseDate)
         assertTrue(parsed.ownerships.last().isCurrent)
         assertEquals(1, parsed.mortgages.size)
+        assertEquals("설정계약", parsed.mortgages.first().registrationCause)
         assertEquals(24_000L, parsed.mortgages.first().claimAmount)
         assertEquals("농협은행주식회사", parsed.mortgages.first().creditorName)
     }

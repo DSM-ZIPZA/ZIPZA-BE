@@ -311,6 +311,10 @@ class RegistryTextParser {
         Regex("(?:등기원인|원인)[^\\n]{0,30}?${dateRegex.pattern}")
             .find(entry)
             ?.let { dateRegex.find(it.value)?.toLocalDate() }
+            ?: dateRegex.findAll(entry)
+                .drop(1)
+                .firstOrNull()
+                ?.toLocalDate()
 
     private fun findEraseDate(entry: String): LocalDate? =
         Regex("말소[^\\n]{0,30}?${dateRegex.pattern}")
@@ -325,12 +329,61 @@ class RegistryTextParser {
     }
 
     private fun findCause(entry: String): String? =
+        findLabeledCause(entry)
+            ?: findCauseAfterReceiptNumber(entry)
+            ?: findCauseAfterCauseDate(entry)
+
+    private fun findLabeledCause(entry: String): String? =
         Regex("(?:등기원인|원인)\\s*[:：]?\\s*([^\\n]+)")
-            .find(entry)
-            ?.groupValues
-            ?.get(1)
-            ?.trim()
-            ?.take(100)
+            .findAll(entry)
+            .mapNotNull { match -> cleanCause(match.groupValues[1]) }
+            .firstOrNull { !isTableHeaderText(it) }
+
+    private fun findCauseAfterReceiptNumber(entry: String): String? =
+        Regex("제\\s*\\d+\\s*호\\s+([^\\n]+)")
+            .findAll(entry)
+            .mapNotNull { match -> cleanCause(match.groupValues[1]) }
+            .firstOrNull()
+
+    private fun findCauseAfterCauseDate(entry: String): String? {
+        val causeDate = findCauseDate(entry) ?: return null
+        val compactCauseDate = causeDate.toKoreanDateString()
+        return entry.lines()
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.contains(compactCauseDate) || it.contains(causeDate.toDelimitedDateString()) }
+            .mapNotNull { line ->
+                cleanCause(line.substringAfter(compactCauseDate, line).substringAfter(causeDate.toDelimitedDateString(), line))
+            }
+            .firstOrNull()
+    }
+
+    private fun cleanCause(value: String): String? {
+        val cleaned = value
+            .replace(Regex("\\d{4}\\s*(?:년|[.\\-/])\\s*\\d{1,2}\\s*(?:월|[.\\-/])\\s*\\d{1,2}\\s*(?:일)?"), " ")
+            .replace(Regex("\\b(?:소유자|공유자|채무자|근저당권자|전세권자|임차권자|채권자|권리자)\\b.*"), "")
+            .replace(Regex("\\b(?:경기도|서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|충청북도|충청남도|전라북도|전북특별자치도|전라남도|경상북도|경상남도|제주특별자치도)\\b.*"), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .trim(',', '.', ':', '：')
+        if (isTableHeaderText(cleaned)) {
+            return null
+        }
+        return cleaned.takeIf { it.isNotBlank() }?.take(100)
+    }
+
+    private fun isTableHeaderText(value: String): Boolean =
+        value.contains("순위번호") ||
+            value.contains("등 기") ||
+            value.contains("등 기 목 적") ||
+            value.contains("등기목적") ||
+            value.contains("권리자 및 기타사항")
+
+    private fun LocalDate.toKoreanDateString(): String =
+        "${year}년${monthValue}월${dayOfMonth}일"
+
+    private fun LocalDate.toDelimitedDateString(): String =
+        "${year}.${monthValue}.${dayOfMonth}"
 
     private fun findPersonName(entry: String, vararg labels: String): String? {
         labels.forEach { label ->
