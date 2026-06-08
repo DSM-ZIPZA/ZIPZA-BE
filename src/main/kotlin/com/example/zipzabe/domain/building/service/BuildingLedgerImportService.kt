@@ -135,9 +135,10 @@ class BuildingLedgerImportService(
 
     private fun fallbackParsedLedger(analysisRequest: com.example.zipzabe.domain.analysis.entity.AnalysisRequest): ParsedBuildingLedger {
         val property = analysisRequest.property
+        val isApartmentLike = property.isApartment || property.buildingName?.contains("아파트") == true
         return ParsedBuildingLedger(
             mainPurposeCode = "UNKNOWN",
-            mainPurposeName = if (property.isApartment) "공동주택(아파트)" else "주거시설",
+            mainPurposeName = if (isApartmentLike) "공동주택(아파트)" else "주택",
             totalFloorArea = analysisRequest.exclusiveArea.takeIf { it > 0.0 },
             buildingArea = null,
             buildingCoverageRatio = 0.0,

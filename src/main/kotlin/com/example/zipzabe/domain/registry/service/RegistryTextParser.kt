@@ -83,25 +83,29 @@ class RegistryTextParser {
         fallbackBuildingName: String?,
     ): ParsedTitle {
         val titleText = if (titleSection.isBlank()) wholeText else titleSection
+        val headerLocation = findRegistryHeaderLocation(titleText)
         val realEstateType = when {
             titleText.contains("집합건물") -> "집합건물"
             titleText.contains("토지") -> "토지"
             titleText.contains("건물") -> "건물"
             else -> "집합건물"
         }
-        val locationAddress = findRegistryHeaderLocation(titleText)
+        val locationAddress = headerLocation
             ?: findLabeledValue(titleText, "소재지번", "소재지", "도로명주소")
             ?: titleText.lines().firstOrNull { it.contains("동") && (it.contains("번") || it.contains("로")) }?.trim()
             ?: fallbackAddress
-        val buildingName = findLabeledValue(titleText, "건물의 명칭", "건물명칭", "건물명")
+        val buildingName = findBuildingNameFromHeader(headerLocation)
+            ?: findLabeledValue(titleText, "건물의 명칭", "건물명")
             ?: fallbackBuildingName
-        val floorInfo = Regex("(제?\\s*\\d+\\s*층|\\d+\\s*호|[지하상]?\\d+층)")
+        val floorInfo = findUnitFloorInfo(headerLocation)
+            ?: Regex("(제?\\s*\\d+\\s*층|\\d+\\s*호|[지하상]?\\d+층)")
             .find(titleText)
             ?.value
             ?.replace(" ", "")
-        val exclusiveArea = findArea(titleText, "전유")
+        val exclusiveArea = findExclusiveAreaFromUnitSection(titleText) ?: findArea(titleText, "전유")
         val commonArea = findArea(titleText, "공용")
-        val purpose = findLabeledValue(titleText, "용도", "건물내역")?.take(100)
+        val purpose = findPurposeFromTitle(titleText)
+            ?: findLabeledValue(titleText, "용도", "건물내역")?.take(100)
         val landRightType = findLabeledValue(titleText, "대지권의 종류", "대지권종류")?.take(50)
         val landRightRatio = Regex("(?:대지권비율|대지권의 비율)\\s*[:：]?\\s*([^\\n]+)")
             .find(titleText)
@@ -143,6 +147,45 @@ class RegistryTextParser {
             ?.get(1)
             ?.trim()
             ?.takeIf { it.isNotBlank() }
+
+    private fun findBuildingNameFromHeader(headerLocation: String?): String? {
+        if (headerLocation.isNullOrBlank()) return null
+        val beforeDong = Regex("(.+?)\\s+제?\\s*\\d+\\s*동")
+            .find(headerLocation)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            ?: return null
+        return beforeDong.split(Regex("\\s+"))
+            .lastOrNull()
+            ?.takeIf { it.isNotBlank() && !it.matches(Regex("\\d+")) }
+            ?.take(100)
+    }
+
+    private fun findUnitFloorInfo(headerLocation: String?): String? =
+        headerLocation
+            ?.let {
+                Regex("제?\\s*\\d+\\s*층\\s+제?\\s*\\d+\\s*호")
+                    .find(it)
+                    ?.value
+            }
+            ?.replace(" ", "")
+            ?.take(50)
+
+    private fun findExclusiveAreaFromUnitSection(text: String): Double? =
+        Regex("제?\\s*\\d+\\s*층\\s+제?\\s*\\d+\\s*호[^\\n]*\\n\\s*([0-9]+(?:[,.][0-9]+)?)\\s*(?:㎡|m2|m²)")
+            .find(text)
+            ?.groupValues
+            ?.get(1)
+            ?.replace(",", ".")
+            ?.toDoubleOrNull()
+
+    private fun findPurposeFromTitle(text: String): String? =
+        Regex("(공동주택\\s*\\([^)\\n]+\\)|다세대주택|연립주택|단독주택|다가구주택|오피스텔|아파트)")
+            .find(text)
+            ?.value
+            ?.replace(" ", "")
+            ?.take(100)
 
     private fun findArea(text: String, keyword: String): Double? =
         Regex("$keyword[^\\n]{0,40}?([0-9]+(?:[,.][0-9]+)?)\\s*(?:㎡|m2|m²)")
