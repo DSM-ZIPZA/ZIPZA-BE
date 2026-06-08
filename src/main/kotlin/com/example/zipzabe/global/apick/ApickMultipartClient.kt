@@ -22,11 +22,15 @@ class ApickMultipartClient(
         .connectTimeout(Duration.ofSeconds(15))
         .build()
 
-    fun post(path: String, fields: Map<String, String>): ResponseEntity<ByteArray> {
+    fun post(
+        path: String,
+        fields: Map<String, String>,
+        timeout: Duration = DEFAULT_REQUEST_TIMEOUT,
+    ): ResponseEntity<ByteArray> {
         val boundary = "zipza-${UUID.randomUUID()}"
         val request = HttpRequest.newBuilder()
             .uri(URI.create("$baseUrl$path"))
-            .timeout(Duration.ofSeconds(60))
+            .timeout(timeout)
             .header("CL_AUTH_KEY", authKey)
             .header("Content-Type", "multipart/form-data; boundary=$boundary")
             .POST(HttpRequest.BodyPublishers.ofByteArray(buildMultipartBody(boundary, fields)))
@@ -55,5 +59,6 @@ class ApickMultipartClient(
 
     companion object {
         private const val CRLF = "\r\n"
+        private val DEFAULT_REQUEST_TIMEOUT: Duration = Duration.ofSeconds(240)
     }
 }

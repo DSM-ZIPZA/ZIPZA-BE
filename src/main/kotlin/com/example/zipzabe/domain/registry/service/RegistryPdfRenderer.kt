@@ -10,7 +10,7 @@ import javax.imageio.ImageIO
 
 @Component
 class RegistryPdfRenderer(
-    @Value("\${google.vision.render-dpi:300}")
+    @Value("\${google.vision.render-dpi:200}")
     private val renderDpi: Int,
     @Value("\${google.vision.max-pages:20}")
     private val maxPages: Int,

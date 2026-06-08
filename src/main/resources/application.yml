@@ -65,7 +65,7 @@ molit:
 google:
   vision:
     api-key: ${GOOGLE_VISION_API_KEY:}
-    render-dpi: ${GOOGLE_VISION_RENDER_DPI:300}
+    render-dpi: ${GOOGLE_VISION_RENDER_DPI:200}
     max-pages: ${GOOGLE_VISION_MAX_PAGES:20}
 
 app:
@@ -91,5 +91,6 @@ logging:
     com.example.zipzabe: DEBUG
     org.springframework.security: DEBUG
     org.springframework.web: DEBUG
+    org.springframework.web.client: INFO
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE

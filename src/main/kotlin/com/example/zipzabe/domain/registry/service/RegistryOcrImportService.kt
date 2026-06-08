@@ -18,6 +18,7 @@ import com.example.zipzabe.domain.registry.repository.RegistryRestrictionReposit
 import com.example.zipzabe.domain.registry.repository.RegistryTitleRepository
 import com.example.zipzabe.global.error.exception.AnalysisRequestNotFoundException
 import com.example.zipzabe.global.error.exception.ExternalApiBadRequestException
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
@@ -38,6 +39,7 @@ class RegistryOcrImportService(
     private val registryTextParser: RegistryTextParser,
     private val apickRegistryPdfService: ApickRegistryPdfService,
 ) {
+    private val log = LoggerFactory.getLogger(RegistryOcrImportService::class.java)
 
     @Transactional
     fun importRegistryPdf(requestId: UUID, file: MultipartFile): RegistryOcrResponse {
@@ -64,13 +66,43 @@ class RegistryOcrImportService(
         val request = analysisRequestRepository.findById(requestId)
             .orElseThrow { AnalysisRequestNotFoundException() }
         val sourceHash = sha256(pdfBytes)
+        log.info(
+            "Starting registry PDF import. requestId={} propertyId={} pdfBytes={} sourceHash={}",
+            requestId,
+            request.property.id,
+            pdfBytes.size,
+            sourceHash,
+        )
         val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
-            .getOrElse { throw ExternalApiBadRequestException() }
+            .getOrElse { e ->
+                log.warn("Failed to render registry PDF. requestId={} pdfBytes={}", requestId, pdfBytes.size, e)
+                throw ExternalApiBadRequestException()
+            }
+        log.info(
+            "Rendered registry PDF. requestId={} pageCount={} imageCount={} imageBytes={}",
+            requestId,
+            renderedPdf.pageCount,
+            renderedPdf.pageImages.size,
+            renderedPdf.pageImages.sumOf { it.size },
+        )
         val extractedText = googleVisionOcrService.extractText(renderedPdf.pageImages)
+        log.info(
+            "Registry OCR completed. requestId={} extractedTextLength={}",
+            requestId,
+            extractedText.length,
+        )
         val parsed = registryTextParser.parse(
             text = extractedText,
             fallbackAddress = request.property.jibunAddress,
             fallbackBuildingName = request.property.buildingName,
+        )
+        log.info(
+            "Registry text parsed. requestId={} uniqueNumberPresent={} ownershipCount={} restrictionCount={} mortgageCount={}",
+            requestId,
+            parsed.uniqueNumber.isNotBlank(),
+            parsed.ownerships.size,
+            parsed.restrictions.size,
+            parsed.mortgages.size,
         )
 
         val candidate = registryCandidateRepository.save(
@@ -152,6 +184,13 @@ class RegistryOcrImportService(
                     eraseDate = it.eraseDate,
                 )
             },
+        )
+
+        log.info(
+            "Registry import saved. requestId={} registryRawId={} registryCandidateId={}",
+            requestId,
+            raw.id,
+            candidate.id,
         )
 
         return RegistryOcrResponse(

@@ -19,20 +19,38 @@ class BuildingService(
     private val log = LoggerFactory.getLogger(BuildingService::class.java)
 
     fun getBuildingRegisterPdf(request: BuildingRegisterRequest): ByteArray {
-        return runCatching { requestBuildingRegisterPdf(request) }
+        val resolvedRequest = resolveRegisterRequestFromList(request)
+        if (resolvedRequest != null) {
+            log.info(
+                "Using Apick building register list candidate. address={} originalBName={} originalDong={} originalHo={} resolvedBName={} resolvedDong={} resolvedHo={}",
+                request.address,
+                request.bName,
+                request.dong,
+                request.ho,
+                resolvedRequest.bName,
+                resolvedRequest.dong,
+                resolvedRequest.ho,
+            )
+        }
+
+        return runCatching { requestBuildingRegisterPdf(resolvedRequest ?: request) }
             .recoverCatching { original ->
-                val resolvedRequest = resolveRegisterRequestFromList(request) ?: throw original
-                log.info(
-                    "Retrying building register with Apick list candidate. address={} originalBName={} originalDong={} originalHo={} resolvedBName={} resolvedDong={} resolvedHo={}",
-                    request.address,
-                    request.bName,
-                    request.dong,
-                    request.ho,
-                    resolvedRequest.bName,
-                    resolvedRequest.dong,
-                    resolvedRequest.ho,
-                )
-                requestBuildingRegisterPdf(resolvedRequest)
+                if (resolvedRequest == null) {
+                    val retryRequest = resolveRegisterRequestFromList(request) ?: throw original
+                    log.info(
+                        "Retrying building register with Apick list candidate. address={} originalBName={} originalDong={} originalHo={} resolvedBName={} resolvedDong={} resolvedHo={}",
+                        request.address,
+                        request.bName,
+                        request.dong,
+                        request.ho,
+                        retryRequest.bName,
+                        retryRequest.dong,
+                        retryRequest.ho,
+                    )
+                    requestBuildingRegisterPdf(retryRequest)
+                } else {
+                    throw original
+                }
             }
             .getOrThrow()
     }
@@ -86,7 +104,6 @@ class BuildingService(
     fun getBuildingRegisterList(address: String): BuildingRegisterListResponse {
         val body = mapOf("address" to address)
         val response = postMultipart("/rest/get_building_register_list", body)
-        logUnexpectedResponse("buildingRegisterList", response, response.body ?: ByteArray(0))
         ensureSuccessfulPdfResponse(response)
         val bytes = response.body ?: ByteArray(0)
         throwIfApickJsonError(bytes, "buildingRegisterList")
