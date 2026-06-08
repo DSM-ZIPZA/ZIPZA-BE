@@ -55,55 +55,55 @@ data class MolitRentApiResponse(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class Item(
-        @JsonProperty("년")
+        @JsonAlias("년", "dealYear")
         val dealYear: String? = null,
 
-        @JsonProperty("월")
+        @JsonAlias("월", "dealMonth")
         val dealMonth: String? = null,
 
-        @JsonProperty("일")
+        @JsonAlias("일", "dealDay")
         val dealDay: String? = null,
 
-        @JsonProperty("법정동")
+        @JsonAlias("법정동", "umdNm")
         val legalDong: String? = null,
 
-        @JsonProperty("지번")
+        @JsonAlias("지번", "jibun")
         val jibun: String? = null,
 
-        @JsonProperty("지역코드")
+        @JsonAlias("지역코드", "sggCd")
         val regionalCode: String? = null,
 
-        @JsonAlias("아파트", "연립다세대", "오피스텔", "단독다가구")
+        @JsonAlias("아파트", "연립다세대", "오피스텔", "단독다가구", "aptNm", "mhouseNm", "offiNm")
         val buildingName: String? = null,
 
-        @JsonProperty("보증금액")
+        @JsonAlias("보증금액", "deposit")
         val depositAmount: String? = null,
 
-        @JsonProperty("월세금액")
+        @JsonAlias("월세금액", "monthlyRent")
         val monthlyRent: String? = null,
 
-        @JsonProperty("전용면적")
+        @JsonAlias("전용면적", "excluUseAr", "totalFloorAr")
         val exclusiveArea: String? = null,
 
-        @JsonProperty("층")
+        @JsonAlias("층", "floor")
         val floor: String? = null,
 
-        @JsonProperty("계약구분")
+        @JsonAlias("계약구분", "contractType")
         val contractClassification: String? = null,
 
-        @JsonProperty("계약기간")
+        @JsonAlias("계약기간", "contractTerm")
         val contractTerm: String? = null,
 
-        @JsonProperty("종전계약보증금")
+        @JsonAlias("종전계약보증금", "preDeposit")
         val previousDeposit: String? = null,
 
-        @JsonProperty("종전계약월세")
+        @JsonAlias("종전계약월세", "preMonthlyRent")
         val previousMonthlyRent: String? = null,
 
-        @JsonProperty("갱신요구권사용")
+        @JsonAlias("갱신요구권사용", "useRRRight")
         val renewalRightUsage: String? = null,
 
-        @JsonProperty("건축년도")
+        @JsonAlias("건축년도", "buildYear")
         val buildYear: String? = null,
     )
 }

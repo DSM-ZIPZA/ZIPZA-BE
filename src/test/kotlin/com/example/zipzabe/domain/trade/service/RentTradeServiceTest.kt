@@ -129,30 +129,30 @@ class RentTradeServiceTest {
                 <body>
                     <items>
                         <item>
-                            <년>2024</년>
-                            <월>4</월>
-                            <일>15</일>
-                            <법정동>역삼동</법정동>
-                            <지번>123-45</지번>
-                            <아파트>집자</아파트>
-                            <보증금액>28,300</보증금액>
-                            <월세금액>0</월세금액>
-                            <전용면적>84.9</전용면적>
-                            <층>12</층>
-                            <계약구분>신규</계약구분>
-                            <계약기간>24.05~26.05</계약기간>
+                            <dealYear>2024</dealYear>
+                            <dealMonth>4</dealMonth>
+                            <dealDay>15</dealDay>
+                            <umdNm>역삼동</umdNm>
+                            <jibun>123-45</jibun>
+                            <aptNm>집자</aptNm>
+                            <deposit>28,300</deposit>
+                            <monthlyRent>0</monthlyRent>
+                            <excluUseAr>84.9</excluUseAr>
+                            <floor>12</floor>
+                            <contractType>신규</contractType>
+                            <contractTerm>24.05~26.05</contractTerm>
                         </item>
                         <item>
-                            <년>2024</년>
-                            <월>4</월>
-                            <일>16</일>
-                            <법정동>역삼동</법정동>
-                            <지번>999</지번>
-                            <아파트>다른아파트</아파트>
-                            <보증금액>10,000</보증금액>
-                            <월세금액>50</월세금액>
-                            <전용면적>59.5</전용면적>
-                            <층>5</층>
+                            <dealYear>2024</dealYear>
+                            <dealMonth>4</dealMonth>
+                            <dealDay>16</dealDay>
+                            <umdNm>역삼동</umdNm>
+                            <jibun>999</jibun>
+                            <aptNm>다른아파트</aptNm>
+                            <deposit>10,000</deposit>
+                            <monthlyRent>50</monthlyRent>
+                            <excluUseAr>59.5</excluUseAr>
+                            <floor>5</floor>
                         </item>
                     </items>
                     <numOfRows>1000</numOfRows>
