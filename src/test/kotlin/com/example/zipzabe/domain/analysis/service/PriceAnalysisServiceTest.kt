@@ -72,7 +72,30 @@ class PriceAnalysisServiceTest {
         assertEquals(10, response.riskScore)
     }
 
-    private fun createAnalysisRequest(depositAmount: Long): AnalysisRequest {
+    @Test
+    fun `analyze does not filter by area when exclusive area is not provided`() {
+        val request = createAnalysisRequest(depositAmount = 12500L, exclusiveArea = 0.0)
+        val requestId = requireNotNull(request.id)
+        val records = listOf(
+            createTradeRecord(request.property, 9000L, exclusiveArea = 59.0),
+            createTradeRecord(request.property, 10000L, exclusiveArea = 84.9),
+            createTradeRecord(request.property, 11000L, exclusiveArea = 120.0),
+        )
+
+        Mockito.`when`(analysisRequestRepository.findById(requestId)).thenReturn(Optional.of(request))
+        Mockito.`when`(tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)).thenReturn(records)
+        Mockito.`when`(priceAnalysisRepository.save(Mockito.any())).thenAnswer { it.arguments[0] }
+
+        val response = service.analyze(requestId, months = 24)
+
+        assertEquals(3, response.sampleCount)
+        assertEquals(PriceAnalysisStatus.DANGER, response.status)
+    }
+
+    private fun createAnalysisRequest(
+        depositAmount: Long,
+        exclusiveArea: Double = 84.9,
+    ): AnalysisRequest {
         val user = User(
             email = "tester@example.com",
             nickname = "tester",
@@ -101,7 +124,7 @@ class PriceAnalysisServiceTest {
             contractType = JEONSE,
             depositAmount = depositAmount,
             floor = 12,
-            exclusiveArea = 84.9,
+            exclusiveArea = exclusiveArea,
             contractDate = LocalDate.of(2024, 4, 20),
             balanceDate = LocalDate.of(2024, 5, 20),
             expiryDate = LocalDate.of(2026, 5, 20),
@@ -109,13 +132,17 @@ class PriceAnalysisServiceTest {
         ).also { ReflectionTestUtils.setField(it, "id", UUID.randomUUID()) }
     }
 
-    private fun createTradeRecord(property: Property, depositAmount: Long): TradeRecord =
+    private fun createTradeRecord(
+        property: Property,
+        depositAmount: Long,
+        exclusiveArea: Double = 84.9,
+    ): TradeRecord =
         TradeRecord(
             property = property,
             buildingType = BuildingType.APARTMENT,
             contractType = ContractType.JEONSE,
             depositAmount = depositAmount,
-            exclusiveArea = 84.9,
+            exclusiveArea = exclusiveArea,
             floor = 12,
             contractDate = LocalDate.of(2024, 3, 15),
         )

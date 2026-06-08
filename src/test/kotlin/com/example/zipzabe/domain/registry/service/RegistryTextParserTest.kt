@@ -54,4 +54,29 @@ class RegistryTextParserTest {
         assertEquals(24_000L, parsed.mortgages.first().claimAmount)
         assertEquals("농협은행주식회사", parsed.mortgages.first().creditorName)
     }
+
+    @Test
+    fun `removes registry watermark noise before parsing title fields`() {
+        val text = """
+            등기사항전부증명서(말소사항 포함)
+            고유번호 1358-2019-013681
+            [집합건물] 경기도 수원시 권선구 호매실동 1420 호매실금호어울림에듀포레 제102동 제18층 열 람 용 제1803호
+            【 표 제 부 】 ( 전유부분의 건물의 표시 )
+            표시번호 접수 건물번호 건물내역
+            1 2019년10월14일 제18층 열람용 제1803호 철근콘크리트구조
+            72.9161열람용㎡
+            【 갑 구 】 ( 소유권에 관한 사항 )
+            순위번호 등 기 목 적 접 수 등 기 원 인 권리자 및 기타사항
+        """.trimIndent()
+
+        val parsed = parser.parse(
+            text = text,
+            fallbackAddress = "fallback",
+            fallbackBuildingName = "fallbackBuilding",
+        )
+
+        assertEquals("호매실금호어울림에듀포레", parsed.title.buildingName)
+        assertEquals("제18층제1803호", parsed.title.floorInfo)
+        assertEquals(72.9161, parsed.title.exclusiveArea)
+    }
 }

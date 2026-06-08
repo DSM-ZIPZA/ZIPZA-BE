@@ -25,7 +25,9 @@ import com.example.zipzabe.domain.report.dto.NextActionResponse
 import com.example.zipzabe.domain.report.dto.RiskItemResponse
 import com.example.zipzabe.domain.report.repository.DiagnosisReportRepository
 import com.example.zipzabe.domain.trade.entity.ContractType
+import com.example.zipzabe.domain.trade.entity.TradeRecord
 import com.example.zipzabe.domain.trade.repository.TradeRecordRepository
+import com.example.zipzabe.domain.trade.service.RentTradeService
 import com.example.zipzabe.domain.user.facade.UserFacade
 import com.example.zipzabe.global.error.exception.AnalysisRequestNotFoundException
 import com.fasterxml.jackson.core.type.TypeReference
@@ -55,6 +57,7 @@ class AnalysisDetailService(
     private val guaranteeAnalysisRepository: GuaranteeAnalysisRepository,
     private val diagnosisReportRepository: DiagnosisReportRepository,
     private val propertyPriceService: PropertyPriceService,
+    private val rentTradeService: RentTradeService,
 ) {
     @Transactional(readOnly = true)
     fun getDetail(requestId: UUID): AnalysisDetailResponse {
@@ -129,13 +132,23 @@ class AnalysisDetailService(
     }
 
     private fun buildPriceHistory(request: com.example.zipzabe.domain.analysis.entity.AnalysisRequest): List<PricePointResponse> {
-        val allRecords = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)
+        val fetchedRecords = runCatching {
+            rentTradeService.fetchRecentJeonseRecordsByProperty(
+                property = request.property,
+                baseDate = request.contractDate,
+                months = PRICE_HISTORY_MONTHS,
+            )
+        }.getOrDefault(emptyList())
+        val storedRecords = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)
             .filter { it.contractType == ContractType.JEONSE }
-        val latestDate = allRecords.maxOfOrNull { it.contractDate } ?: request.contractDate
+        val allRecords = (fetchedRecords + storedRecords)
+            .filter { it.depositAmount > 0L }
+            .distinctBy(::tradeRecordKey)
+        val latestDate = allRecords.maxOfOrNull { it.contractDate } ?: return emptyList()
         val cutoffDate = YearMonth.from(latestDate).minusMonths((PRICE_HISTORY_MONTHS - 1).toLong()).atDay(1)
         val records = allRecords
             .filter { !it.contractDate.isBefore(cutoffDate) }
-            .asReversed()
+            .sortedBy { it.contractDate }
         val history = records
             .groupBy { YearMonth.from(it.contractDate).toString() }
             .map { (month, items) ->
@@ -149,19 +162,21 @@ class AnalysisDetailService(
                     volume = items.size,
                 )
             }
-        if (history.isNotEmpty()) return history
-
-        return listOf(
-            PricePointResponse(
-                date = YearMonth.from(request.contractDate).toString(),
-                open = request.depositAmount,
-                high = request.depositAmount,
-                low = request.depositAmount,
-                close = request.depositAmount,
-                volume = 1,
-            )
-        )
+        return history
     }
+
+    private fun tradeRecordKey(record: TradeRecord): String =
+        listOf(
+            record.buildingType,
+            record.contractType,
+            record.depositAmount,
+            record.monthlyRent,
+            record.exclusiveArea,
+            record.floor,
+            record.contractDate,
+            record.contractClassification,
+            record.contractTerm,
+        ).joinToString("|")
 
     private fun estimatePropertyValue(
         property: com.example.zipzabe.domain.property.entity.Property,

@@ -53,20 +53,22 @@ class RentTradeService(
             .orElseThrow(::AnalysisRequestNotFoundException)
         val property = request.property
         val lawdCd = resolveLawdCd(property)
-        val targetBuildingType = resolveBuildingType(property, buildingType)
+        val targetBuildingTypes = resolveCandidateBuildingTypes(property, buildingType)
         val dealMonths = buildDealMonths(request.contractDate, months)
 
-        val fetchedRecords = dealMonths
-            .flatMap { dealYm ->
-                fetchMonthlyItems(targetBuildingType, lawdCd, dealYm)
-                    .filter { matchesProperty(it, property) }
-                    .mapNotNull {
-                        it.toTradeRecord(
-                            property = property,
-                            buildingType = targetBuildingType,
-                            fallbackFloor = request.floor,
-                            fallbackExclusiveArea = request.exclusiveArea,
-                        )
+        val fetchedRecords = targetBuildingTypes
+            .flatMap { targetBuildingType ->
+                dealMonths.flatMap { dealYm ->
+                    fetchMonthlyItems(targetBuildingType, lawdCd, dealYm)
+                        .filter { matchesProperty(it, property) }
+                        .mapNotNull {
+                            it.toTradeRecord(
+                                property = property,
+                                buildingType = targetBuildingType,
+                                fallbackFloor = request.floor,
+                                fallbackExclusiveArea = request.exclusiveArea,
+                            )
+                        }
                     }
             }
             .distinctBy(::toKey)
@@ -91,7 +93,7 @@ class RentTradeService(
             lawdCd = lawdCd,
             dealYmFrom = dealMonths.first(),
             dealYmTo = dealMonths.last(),
-            buildingType = targetBuildingType,
+            buildingType = targetBuildingTypes.first(),
             fetchedCount = fetchedRecords.size,
             savedCount = savedRecords.size,
             records = responseRecords,
@@ -138,6 +140,37 @@ class RentTradeService(
                 }
             }
             .filter { it > 0L }
+    }
+
+    fun fetchRecentJeonseRecordsByProperty(
+        property: Property,
+        baseDate: LocalDate,
+        months: Int = DEFAULT_SEARCH_MONTHS,
+        buildingType: BuildingType? = null,
+    ): List<TradeRecord> {
+        val lawdCd = resolveLawdCd(property)
+        val targetBuildingTypes = resolveCandidateBuildingTypes(property, buildingType)
+        val dealMonths = buildDealMonths(baseDate, months)
+
+        return targetBuildingTypes
+            .flatMap { targetBuildingType ->
+                dealMonths.flatMap { dealYm ->
+                    fetchMonthlyItems(targetBuildingType, lawdCd, dealYm)
+                        .filter { matchesProperty(it, property) }
+                        .filter { (parseLongAmount(it.monthlyRent) ?: 0L) == 0L }
+                        .mapNotNull {
+                            it.toTradeRecord(
+                                property = property,
+                                buildingType = targetBuildingType,
+                                fallbackFloor = 0,
+                                fallbackExclusiveArea = 0.0,
+                            )
+                        }
+                }
+            }
+            .filter { it.depositAmount > 0L }
+            .distinctBy(::toKey)
+            .sortedWith(compareBy<TradeRecord> { it.contractDate }.thenBy { it.depositAmount })
     }
 
     private fun fetchMonthlyItems(
@@ -230,6 +263,19 @@ class RentTradeService(
             normalized.contains("단독") || normalized.contains("다가구") -> listOf(BuildingType.DETACHED_HOUSE)
             else -> listOf(BuildingType.APARTMENT, BuildingType.MULTI_FAMILY, BuildingType.ROW_HOUSE, BuildingType.OFFICETEL)
         }
+    }
+
+    private fun resolveCandidateBuildingTypes(property: Property, requestedBuildingType: BuildingType?): List<BuildingType> {
+        if (requestedBuildingType != null && requestedBuildingType != BuildingType.ETC) {
+            return listOf(requestedBuildingType)
+        }
+
+        val resolved = resolveBuildingType(property, requestedBuildingType)
+        if (resolved != BuildingType.ETC) {
+            return listOf(resolved)
+        }
+
+        return resolveBuildingTypes(property.buildingName, property.isApartment)
     }
 
     private fun buildDealMonths(contractDate: LocalDate, months: Int): List<String> {

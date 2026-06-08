@@ -84,6 +84,7 @@ class PriceAnalysisService(
     }
 
     private fun isSimilarArea(record: TradeRecord, requestExclusiveArea: Double): Boolean {
+        if (requestExclusiveArea <= 0.0) return true
         val tolerance = max(MIN_AREA_TOLERANCE, requestExclusiveArea * AREA_TOLERANCE_RATE)
         return abs(record.exclusiveArea - requestExclusiveArea) <= tolerance
     }

@@ -36,6 +36,7 @@ class RegistryTextParser {
     private fun normalize(text: String): String =
         text.replace("\r\n", "\n")
             .replace('\r', '\n')
+            .replace(Regex("열\\s*람\\s*용"), " ")
             .replace(Regex("[\\t ]+"), " ")
 
     private fun truncateRegistryRecord(text: String): String {
