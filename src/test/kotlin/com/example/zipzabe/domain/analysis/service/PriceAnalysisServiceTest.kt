@@ -7,6 +7,8 @@ import com.example.zipzabe.domain.analysis.entity.ContractType.JEONSE
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
 import com.example.zipzabe.domain.analysis.repository.PriceAnalysisRepository
 import com.example.zipzabe.domain.property.entity.Property
+import com.example.zipzabe.domain.registry.repository.RegistryRawRepository
+import com.example.zipzabe.domain.registry.repository.RegistryTitleRepository
 import com.example.zipzabe.domain.trade.entity.BuildingType
 import com.example.zipzabe.domain.trade.entity.ContractType
 import com.example.zipzabe.domain.trade.entity.TradeRecord
@@ -26,11 +28,15 @@ class PriceAnalysisServiceTest {
     private val analysisRequestRepository = Mockito.mock(AnalysisRequestRepository::class.java)
     private val tradeRecordRepository = Mockito.mock(TradeRecordRepository::class.java)
     private val priceAnalysisRepository = Mockito.mock(PriceAnalysisRepository::class.java)
+    private val registryRawRepository = Mockito.mock(RegistryRawRepository::class.java)
+    private val registryTitleRepository = Mockito.mock(RegistryTitleRepository::class.java)
 
     private val service = PriceAnalysisService(
         analysisRequestRepository = analysisRequestRepository,
         tradeRecordRepository = tradeRecordRepository,
         priceAnalysisRepository = priceAnalysisRepository,
+        registryRawRepository = registryRawRepository,
+        registryTitleRepository = registryTitleRepository,
     )
 
     @Test

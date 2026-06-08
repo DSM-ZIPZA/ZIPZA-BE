@@ -2,9 +2,12 @@ package com.example.zipzabe.domain.analysis.service
 
 import com.example.zipzabe.domain.analysis.dto.PriceAnalysisResponse
 import com.example.zipzabe.domain.analysis.dto.PriceAnalysisStatus
+import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
 import com.example.zipzabe.domain.analysis.entity.PriceAnalysis
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
 import com.example.zipzabe.domain.analysis.repository.PriceAnalysisRepository
+import com.example.zipzabe.domain.registry.repository.RegistryRawRepository
+import com.example.zipzabe.domain.registry.repository.RegistryTitleRepository
 import com.example.zipzabe.domain.trade.entity.ContractType
 import com.example.zipzabe.domain.trade.entity.TradeRecord
 import com.example.zipzabe.domain.trade.repository.TradeRecordRepository
@@ -22,6 +25,8 @@ class PriceAnalysisService(
     private val analysisRequestRepository: AnalysisRequestRepository,
     private val tradeRecordRepository: TradeRecordRepository,
     private val priceAnalysisRepository: PriceAnalysisRepository,
+    private val registryRawRepository: RegistryRawRepository,
+    private val registryTitleRepository: RegistryTitleRepository,
 ) {
 
     @Transactional
@@ -31,11 +36,12 @@ class PriceAnalysisService(
         val normalizedMonths = months.coerceIn(MIN_SEARCH_MONTHS, MAX_SEARCH_MONTHS)
         val baseDate = if (request.contractDate.isAfter(LocalDate.now())) LocalDate.now() else request.contractDate
         val fromDate = baseDate.minusMonths(normalizedMonths.toLong())
+        val comparisonArea = resolveComparisonArea(request)
 
         val samples = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)
             .filter { it.contractType == ContractType.JEONSE }
             .filter { !it.contractDate.isBefore(fromDate) && !it.contractDate.isAfter(baseDate) }
-            .filter { isSimilarArea(it, request.exclusiveArea) }
+            .filter { isSimilarArea(it, comparisonArea) }
 
         val saved = if (samples.size < MIN_SAMPLE_COUNT) {
             priceAnalysisRepository.save(
@@ -81,6 +87,13 @@ class PriceAnalysisService(
         val analysis = priceAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
             ?: throw PriceAnalysisNotFoundException()
         return toResponse(analysis, request.depositAmount)
+    }
+
+    private fun resolveComparisonArea(request: AnalysisRequest): Double {
+        val registryArea = registryRawRepository.findTopByRequestOrderByFetchedAtDesc(request)
+            ?.let(registryTitleRepository::findByRegistryRaw)
+            ?.firstNotNullOfOrNull { it.exclusiveArea?.takeIf { area -> area > 0.0 } }
+        return registryArea ?: request.exclusiveArea
     }
 
     private fun isSimilarArea(record: TradeRecord, requestExclusiveArea: Double): Boolean {
