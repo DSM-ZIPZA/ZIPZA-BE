@@ -35,6 +35,7 @@ class RegistryOcrImportService(
     private val registryRestrictionRepository: RegistryRestrictionRepository,
     private val registryMortgageRepository: RegistryMortgageRepository,
     private val registryPdfRenderer: RegistryPdfRenderer,
+    private val pdfTextExtractor: PdfTextExtractor,
     private val googleVisionOcrService: GoogleVisionOcrService,
     private val registryTextParser: RegistryTextParser,
     private val apickRegistryPdfService: ApickRegistryPdfService,
@@ -73,19 +74,36 @@ class RegistryOcrImportService(
             pdfBytes.size,
             sourceHash,
         )
-        val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
+        val directText = runCatching { pdfTextExtractor.extract(pdfBytes) }
             .getOrElse { e ->
-                log.warn("Failed to render registry PDF. requestId={} pdfBytes={}", requestId, pdfBytes.size, e)
-                throw ExternalApiBadRequestException()
+                log.warn("Failed to extract registry PDF text. requestId={} pdfBytes={}", requestId, pdfBytes.size, e)
+                ExtractedPdfText(text = "", pageCount = 0)
             }
-        log.info(
-            "Rendered registry PDF. requestId={} pageCount={} imageCount={} imageBytes={}",
-            requestId,
-            renderedPdf.pageCount,
-            renderedPdf.pageImages.size,
-            renderedPdf.pageImages.sumOf { it.size },
-        )
-        val extractedText = googleVisionOcrService.extractText(renderedPdf.pageImages)
+        var pageCount = directText.pageCount
+        val extractedText = if (directText.text.length >= MIN_DIRECT_TEXT_LENGTH) {
+            log.info(
+                "Registry PDF text extracted directly. requestId={} pageCount={} extractedTextLength={}",
+                requestId,
+                directText.pageCount,
+                directText.text.length,
+            )
+            directText.text
+        } else {
+            val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
+                .getOrElse { e ->
+                    log.warn("Failed to render registry PDF. requestId={} pdfBytes={}", requestId, pdfBytes.size, e)
+                    throw ExternalApiBadRequestException()
+                }
+            log.info(
+                "Rendered registry PDF. requestId={} pageCount={} imageCount={} imageBytes={}",
+                requestId,
+                renderedPdf.pageCount,
+                renderedPdf.pageImages.size,
+                renderedPdf.pageImages.sumOf { it.size },
+            )
+            pageCount = renderedPdf.pageCount
+            googleVisionOcrService.extractText(renderedPdf.pageImages)
+        }
         log.info(
             "Registry OCR completed. requestId={} extractedTextLength={}",
             requestId,
@@ -197,7 +215,7 @@ class RegistryOcrImportService(
             registryRawId = raw.id!!,
             uniqueNumber = raw.uniqueNumber,
             sourceHash = raw.sourceHash,
-            pageCount = renderedPdf.pageCount,
+            pageCount = pageCount,
             extractedTextLength = extractedText.length,
             titleCount = 1,
             ownershipCount = parsed.ownerships.size,
@@ -209,5 +227,9 @@ class RegistryOcrImportService(
     private fun sha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
         return digest.joinToString("") { "%02x".format(it) }
+    }
+
+    companion object {
+        private const val MIN_DIRECT_TEXT_LENGTH = 100
     }
 }

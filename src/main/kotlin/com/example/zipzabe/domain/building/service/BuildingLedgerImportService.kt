@@ -8,9 +8,11 @@ import com.example.zipzabe.domain.building.dto.BuildingRegisterRequest
 import com.example.zipzabe.domain.building.entity.BuildingLedger
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.registry.service.GoogleVisionOcrService
+import com.example.zipzabe.domain.registry.service.PdfTextExtractor
 import com.example.zipzabe.domain.registry.service.RegistryPdfRenderer
 import com.example.zipzabe.global.error.exception.AnalysisRequestNotFoundException
 import com.example.zipzabe.global.error.exception.ExternalApiBadRequestException
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -23,9 +25,11 @@ class BuildingLedgerImportService(
     private val buildingService: BuildingService,
     private val addressService: AddressService,
     private val registryPdfRenderer: RegistryPdfRenderer,
+    private val pdfTextExtractor: PdfTextExtractor,
     private val googleVisionOcrService: GoogleVisionOcrService,
     private val buildingLedgerTextParser: BuildingLedgerTextParser,
 ) {
+    private val log = LoggerFactory.getLogger(BuildingLedgerImportService::class.java)
 
     @Transactional
     fun fetchAndSave(requestId: UUID, fetchRequest: BuildingLedgerFetchRequest): BuildingLedgerFetchResponse {
@@ -48,9 +52,24 @@ class BuildingLedgerImportService(
             )
         )
 
-        val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
-            .getOrElse { throw ExternalApiBadRequestException() }
-        val ocrText = googleVisionOcrService.extractText(renderedPdf.pageImages)
+        val directText = runCatching { pdfTextExtractor.extract(pdfBytes) }
+            .getOrElse {
+                log.warn("Failed to extract building ledger PDF text. requestId={} pdfBytes={}", requestId, pdfBytes.size, it)
+                null
+            }
+        val ocrText = if (directText != null && directText.text.length >= MIN_DIRECT_TEXT_LENGTH) {
+            log.info(
+                "Building ledger PDF text extracted directly. requestId={} pageCount={} extractedTextLength={}",
+                requestId,
+                directText.pageCount,
+                directText.text.length,
+            )
+            directText.text
+        } else {
+            val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
+                .getOrElse { throw ExternalApiBadRequestException() }
+            googleVisionOcrService.extractText(renderedPdf.pageImages)
+        }
         val parsed = buildingLedgerTextParser.parse(ocrText)
 
         val ledger = buildingLedgerRepository.save(
@@ -99,4 +118,8 @@ class BuildingLedgerImportService(
 
     private fun normalizeAddress(value: String): String =
         value.replace("\\s+".toRegex(), "")
+
+    companion object {
+        private const val MIN_DIRECT_TEXT_LENGTH = 100
+    }
 }

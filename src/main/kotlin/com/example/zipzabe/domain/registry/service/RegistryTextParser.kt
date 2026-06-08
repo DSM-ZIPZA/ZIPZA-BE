@@ -8,13 +8,14 @@ class RegistryTextParser {
 
     fun parse(text: String, fallbackAddress: String, fallbackBuildingName: String?): ParsedRegistry {
         val normalizedText = normalize(text)
+        val registryRecordText = truncateRegistryRecord(normalizedText)
         val lines = normalizedText.lines()
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
-        val titleSection = sectionBefore(normalizedText, "갑구")
-        val ownershipSection = sectionBetween(normalizedText, "갑구", "을구")
-        val mortgageSection = sectionAfter(normalizedText, "을구")
+        val titleSection = sectionBefore(registryRecordText, "갑구")
+        val ownershipSection = sectionBetween(registryRecordText, "갑구", "을구")
+        val mortgageSection = sectionAfter(registryRecordText, "을구")
 
         val uniqueNumber = findUniqueNumber(normalizedText)
         val title = parseTitle(titleSection, normalizedText, fallbackAddress, fallbackBuildingName)
@@ -37,24 +38,34 @@ class RegistryTextParser {
             .replace('\r', '\n')
             .replace(Regex("[\\t ]+"), " ")
 
+    private fun truncateRegistryRecord(text: String): String {
+        val endIndexes = listOf("관할등기소", "주요등기사항요약")
+            .mapNotNull { markerRegex(it).find(text)?.range?.first }
+        return if (endIndexes.isEmpty()) text else text.substring(0, endIndexes.min())
+    }
+
     private fun sectionBefore(text: String, marker: String): String {
-        val index = text.indexOf(marker)
-        return if (index >= 0) text.substring(0, index) else text
+        val match = markerRegex(marker).find(text)
+        return if (match != null) text.substring(0, match.range.first) else text
     }
 
     private fun sectionBetween(text: String, start: String, end: String): String {
-        val startIndex = text.indexOf(start)
-        if (startIndex < 0) {
-            return ""
+        val startMatch = markerRegex(start).find(text) ?: return ""
+        val endMatch = markerRegex(end).find(text, startMatch.range.last + 1)
+        return if (endMatch != null) {
+            text.substring(startMatch.range.first, endMatch.range.first)
+        } else {
+            text.substring(startMatch.range.first)
         }
-        val endIndex = text.indexOf(end, startIndex + start.length)
-        return if (endIndex > startIndex) text.substring(startIndex, endIndex) else text.substring(startIndex)
     }
 
     private fun sectionAfter(text: String, marker: String): String {
-        val index = text.indexOf(marker)
-        return if (index >= 0) text.substring(index) else ""
+        val match = markerRegex(marker).find(text)
+        return if (match != null) text.substring(match.range.first) else ""
     }
+
+    private fun markerRegex(marker: String): Regex =
+        marker.map { Regex.escape(it.toString()) }.joinToString("\\s*").toRegex()
 
     private fun findUniqueNumber(text: String): String =
         Regex("(?:고유번호|부동산고유번호)\\s*[:：]?\\s*([0-9\\-]{8,30})")
@@ -78,7 +89,8 @@ class RegistryTextParser {
             titleText.contains("건물") -> "건물"
             else -> "집합건물"
         }
-        val locationAddress = findLabeledValue(titleText, "소재지번", "소재지", "도로명주소")
+        val locationAddress = findRegistryHeaderLocation(titleText)
+            ?: findLabeledValue(titleText, "소재지번", "소재지", "도로명주소")
             ?: titleText.lines().firstOrNull { it.contains("동") && (it.contains("번") || it.contains("로")) }?.trim()
             ?: fallbackAddress
         val buildingName = findLabeledValue(titleText, "건물의 명칭", "건물명칭", "건물명")
@@ -123,6 +135,14 @@ class RegistryTextParser {
         }
         return null
     }
+
+    private fun findRegistryHeaderLocation(text: String): String? =
+        Regex("\\[(?:집합건물|건물|토지)]\\s*([^\\n]+)")
+            .find(text)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
 
     private fun findArea(text: String, keyword: String): Double? =
         Regex("$keyword[^\\n]{0,40}?([0-9]+(?:[,.][0-9]+)?)\\s*(?:㎡|m2|m²)")
@@ -226,8 +246,20 @@ class RegistryTextParser {
     private fun findRank(entry: String): Int =
         Regex("^\\s*(\\d{1,3})").find(entry)?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
-    private fun findPurpose(entry: String, candidates: List<String>): String? =
-        candidates.firstOrNull { entry.contains(it) }
+    private fun findPurpose(entry: String, candidates: List<String>): String? {
+        val firstLine = entry.lineSequence().firstOrNull()?.trim().orEmpty()
+        val leadingPurpose = Regex("^\\d{1,3}(?:[-.]\\d+)?\\s+([^\\s]+)")
+            .find(firstLine)
+            ?.groupValues
+            ?.get(1)
+            .orEmpty()
+
+        val leadingMatch = candidates.firstOrNull { leadingPurpose.contains(it) }
+        if (leadingPurpose.isNotBlank()) {
+            return leadingMatch
+        }
+        return candidates.firstOrNull { entry.contains(it) }
+    }
 
     private fun findDate(entry: String): LocalDate? =
         dateRegex.find(entry)?.toLocalDate()
@@ -266,8 +298,10 @@ class RegistryTextParser {
                 ?.trim()
                 ?.split(Regex("\\s{2,}|\\n"))
                 ?.firstOrNull()
+                ?.replace(Regex("\\d{6}\\s*-\\s*[0-9*]{7}"), "")
+                ?.replace(Regex("\\s+\\d{6}$"), "")
                 ?.takeIf { it.isNotBlank() }
-                ?.let { return it.take(100) }
+                ?.let { return it.trim().take(100) }
         }
         return null
     }
