@@ -103,8 +103,8 @@ class PublicLedgerSummaryServiceTest {
         assertEquals(1, response.registrySummary.currentOwners.size)
         assertEquals(1, response.registrySummary.mortgages.size)
         assertEquals(2, response.registrySummary.restrictions.size)
-        assertTrue(response.overallWarnings.any { it.contains("Trust registration") })
-        assertTrue(response.overallWarnings.any { it.contains("Violation building") })
+        assertTrue(response.overallWarnings.any { it.contains("신탁") })
+        assertTrue(response.overallWarnings.any { it.contains("위반건축물") })
 
         Mockito.verify(buildingAnalysisRepository).save(Mockito.any(BuildingAnalysis::class.java))
         Mockito.verify(rightsAnalysisRepository).save(Mockito.any(RightsAnalysis::class.java))

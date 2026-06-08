@@ -159,23 +159,23 @@ class PublicLedgerSummaryService(
 
         val warnings = mutableListOf<String>()
         if (!addressMatched) {
-            warnings += "Property address does not match the registry title address."
+            warnings += "매물 주소와 등기부 표제부 주소가 일치하지 않습니다."
         }
         if (!areaMatched) {
-            warnings += "Listing exclusive area differs from the building ledger by ${"%.2f".format(areaDifference)}㎡."
+            warnings += "매물 전용면적과 건축물대장 전용면적이 ${"%.2f".format(areaDifference)}㎡ 차이납니다."
         }
         if (parsedFloor == null) {
-            warnings += "Registry title floor information could not be interpreted."
+            warnings += "등기부 표제부의 층 정보를 해석할 수 없습니다."
         } else if (!floorMatched) {
-            warnings += "Listing floor does not match the registry title floor information."
+            warnings += "매물 층수와 등기부 표제부 층 정보가 일치하지 않습니다."
         }
         if (!usageMatched) {
-            warnings += "Building ledger main purpose is not recognized as a residential use."
+            warnings += "건축물대장 주용도가 주거 용도로 확인되지 않습니다."
         }
 
         val violationMessage = if (buildingLedger.isViolationBuilding) {
             listOfNotNull(
-                "Violation building flag found in the building ledger.",
+                "건축물대장에서 위반건축물 표시가 확인됩니다.",
                 buildingLedger.violationReason,
                 buildingLedger.violationDetail
             ).joinToString(" ")
@@ -250,28 +250,28 @@ class PublicLedgerSummaryService(
 
         val warnings = mutableListOf<String>()
         if (currentOwners.isEmpty()) {
-            warnings += "No current owner record was found in the registry."
+            warnings += "등기부에서 현재 소유자 정보를 찾지 못했습니다."
         }
         if (hasRecentOwnerChange) {
-            warnings += "Recent ownership change was detected in the registry."
+            warnings += "최근 소유권 변동 이력이 확인됩니다."
         }
         if (hasTrust) {
-            warnings += "Trust registration was detected in the registry."
+            warnings += "등기부에 신탁 관련 등기가 확인됩니다."
         }
         if (hasSeizure) {
-            warnings += "Seizure entry was detected in the registry."
+            warnings += "등기부에 압류 등기가 확인됩니다."
         }
         if (hasProvisionalSeizure) {
-            warnings += "Provisional seizure entry was detected in the registry."
+            warnings += "등기부에 가압류 등기가 확인됩니다."
         }
         if (hasForcedAuction) {
-            warnings += "Forced auction entry was detected in the registry."
+            warnings += "등기부에 강제경매 관련 등기가 확인됩니다."
         }
         if (hasLeaseRegistration) {
-            warnings += "Lease registration entry was detected in the registry."
+            warnings += "등기부에 임차권등기 관련 권리가 확인됩니다."
         }
         if (activeMortgages.isNotEmpty()) {
-            warnings += "Active mortgage or lease-related rights remain in the registry."
+            warnings += "말소되지 않은 근저당권 또는 임차권 관련 권리가 남아 있습니다."
         }
 
         return RightsSummary(
@@ -327,12 +327,12 @@ class PublicLedgerSummaryService(
                 )
             },
             ownershipWarning = if (hasRecentOwnerChange) {
-                "Recent ownership change was detected on $latestOwnerChangeDate."
+                "최근 소유권 변동일이 $latestOwnerChangeDate 로 확인됩니다."
             } else {
                 null
             },
             trustWarning = if (hasTrust) {
-                "Trust registration was detected in the active registry entries."
+                "현재 유효한 등기 항목에서 신탁 관련 등기가 확인됩니다."
             } else {
                 null
             },
@@ -364,7 +364,7 @@ class PublicLedgerSummaryService(
                 buildingAge = summary.buildingAge,
                 riskScore = calculateBuildingRiskScore(summary),
                 riskReason = summary.warnings.ifEmpty {
-                    listOf("No material mismatch was detected between the listing and public building data.")
+                    listOf("매물 정보와 공적 건축물 정보 사이에 주요 불일치가 발견되지 않았습니다.")
                 }.joinToString(" "),
                 isAddressMatched = summary.isAddressMatched,
                 isUsageMatched = summary.isUsageMatched,
@@ -399,7 +399,7 @@ class PublicLedgerSummaryService(
                 registryDate = registryRaw.fetchedAt.toLocalDate(),
                 riskScore = calculateRightsRiskScore(summary),
                 riskReason = summary.warnings.ifEmpty {
-                    listOf("No material registry risk was detected.")
+                    listOf("등기부에서 주요 권리 위험이 발견되지 않았습니다.")
                 }.joinToString(" "),
                 latestOwnerChangeDate = summary.latestOwnerChangeDate,
                 trustEntryCount = summary.trustEntries.size,
@@ -489,14 +489,14 @@ class PublicLedgerSummaryService(
         warnings: List<String>,
     ): String {
         val ownerSummary = if (currentOwners.isEmpty()) {
-            "Current owners: UNKNOWN"
+            "현재 소유자: 확인 불가"
         } else {
-            "Current owners: ${currentOwners.joinToString(", ") { it.ownerName }}"
+            "현재 소유자: ${currentOwners.joinToString(", ") { it.ownerName }}"
         }
-        val ownerChangeSummary = "Ownership changes: $ownerChangeCount, latest change date: ${latestOwnerChangeDate ?: "N/A"}"
-        val mortgageSummary = "Active mortgage or lease rights: ${activeMortgages.size}"
-        val restrictionSummary = "Active restriction entries: ${activeRestrictions.size}"
-        val warningSummary = if (warnings.isEmpty()) "Warnings: none" else "Warnings: ${warnings.joinToString(" | ")}"
+        val ownerChangeSummary = "소유권 변동 횟수: $ownerChangeCount, 최근 변동일: ${latestOwnerChangeDate ?: "없음"}"
+        val mortgageSummary = "말소되지 않은 근저당권 또는 임차권 관련 권리: ${activeMortgages.size}건"
+        val restrictionSummary = "말소되지 않은 제한 권리: ${activeRestrictions.size}건"
+        val warningSummary = if (warnings.isEmpty()) "주의사항: 없음" else "주의사항: ${warnings.joinToString(" | ")}"
 
         return listOf(ownerSummary, ownerChangeSummary, mortgageSummary, restrictionSummary, warningSummary)
             .joinToString("\n")
