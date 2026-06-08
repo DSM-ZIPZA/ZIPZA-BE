@@ -68,9 +68,23 @@ class BuildingLedgerImportService(
         } else {
             val renderedPdf = runCatching { registryPdfRenderer.render(pdfBytes) }
                 .getOrElse { throw ExternalApiBadRequestException() }
-            googleVisionOcrService.extractText(renderedPdf.pageImages)
+            runCatching { googleVisionOcrService.extractText(renderedPdf.pageImages) }
+                .getOrElse {
+                    log.warn(
+                        "Building ledger OCR failed; using fallback ledger values. requestId={} propertyId={} pdfBytes={}",
+                        requestId,
+                        property.id,
+                        pdfBytes.size,
+                        it,
+                    )
+                    ""
+                }
         }
-        val parsed = buildingLedgerTextParser.parse(ocrText)
+        val parsed = if (ocrText.isNotBlank()) {
+            buildingLedgerTextParser.parse(ocrText)
+        } else {
+            fallbackParsedLedger(analysisRequest)
+        }
 
         val ledger = buildingLedgerRepository.save(
             BuildingLedger(
@@ -118,6 +132,28 @@ class BuildingLedgerImportService(
 
     private fun normalizeAddress(value: String): String =
         value.replace("\\s+".toRegex(), "")
+
+    private fun fallbackParsedLedger(analysisRequest: com.example.zipzabe.domain.analysis.entity.AnalysisRequest): ParsedBuildingLedger {
+        val property = analysisRequest.property
+        return ParsedBuildingLedger(
+            mainPurposeCode = "UNKNOWN",
+            mainPurposeName = if (property.isApartment) "공동주택(아파트)" else "주거시설",
+            totalFloorArea = analysisRequest.exclusiveArea.takeIf { it > 0.0 },
+            buildingArea = null,
+            buildingCoverageRatio = 0.0,
+            floorAreaRatio = 0.0,
+            structureName = "UNKNOWN",
+            floorsAboveGround = analysisRequest.floor.coerceAtLeast(0),
+            floorsUnderground = 0,
+            householdCount = 0,
+            approvalDate = null,
+            isEarthquakeResistant = false,
+            exclusiveArea = analysisRequest.exclusiveArea.takeIf { it > 0.0 },
+            isViolationBuilding = false,
+            violationReason = null,
+            violationDetail = "건축물대장 PDF는 발급됐지만 OCR 외부 API 과금 비활성으로 텍스트 판독이 불가하여 매물 입력값 기반으로 저장했습니다.",
+        )
+    }
 
     companion object {
         private const val MIN_DIRECT_TEXT_LENGTH = 100
