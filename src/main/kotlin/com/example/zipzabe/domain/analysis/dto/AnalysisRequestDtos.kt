@@ -16,9 +16,10 @@ data class AnalysisRequestCreateRequest(
     val depositAmount: Long,
     @Schema(description = "월세. 만원 단위")
     val monthlyRent: Long? = null,
-    val floor: Int,
-    @Schema(description = "전용면적. ㎡ 단위")
-    val exclusiveArea: Double,
+    @Schema(description = "등기부 표제부에서 자동 추출. 미입력 시 0")
+    val floor: Int = 0,
+    @Schema(description = "등기부 표제부에서 자동 추출하는 전용면적. ㎡ 단위, 미입력 시 0")
+    val exclusiveArea: Double = 0.0,
     val contractDate: LocalDate,
     val balanceDate: LocalDate,
     val expiryDate: LocalDate,

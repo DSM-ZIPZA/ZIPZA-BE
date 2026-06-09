@@ -67,6 +67,15 @@ class AnalysisDetailService(
         val property = request.property
         val ledger = buildingLedgerRepository.findTopByPropertyOrderByFetchedAtDesc(property)
         val registryRaw = registryRawRepository.findTopByRequestOrderByFetchedAtDesc(request)
+        val registryTitles = registryRaw
+            ?.let(registryTitleRepository::findByRegistryRaw)
+            .orEmpty()
+        val registryFloor = registryTitles.firstNotNullOfOrNull { parseRegistryFloor(it.floorInfo) }
+        val registryExclusiveArea = registryTitles.firstNotNullOfOrNull {
+            it.exclusiveArea?.takeIf { area -> area > 0.0 }
+        }
+        val resolvedFloor = registryFloor ?: request.floor.takeIf { it != 0 }
+        val resolvedExclusiveArea = registryExclusiveArea ?: request.exclusiveArea.takeIf { it > 0.0 }
         val priceAnalysis = priceAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val buildingAnalysis = buildingAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
         val rightsAnalysis = rightsAnalysisRepository.findTopByRequestOrderByAnalyzedAtDesc(request)
@@ -98,14 +107,20 @@ class AnalysisDetailService(
 
         return AnalysisDetailResponse(
             requestId = requestId,
-            property = PropertyListingResponse.from(property, request, ledger?.floorsAboveGround),
+            property = PropertyListingResponse.from(
+                property = property,
+                request = request,
+                totalFloors = ledger?.floorsAboveGround,
+                resolvedFloor = resolvedFloor,
+                resolvedExclusiveAreaM2 = resolvedExclusiveArea,
+            ),
             buildingInfo = BuildingInfoResponse(
                 name = property.buildingName ?: property.roadAddress,
                 address = property.roadAddress.ifBlank { property.jibunAddress },
                 buildingManagementNumber = property.buildingManagementNumber,
-                floor = request.floor,
+                floor = resolvedFloor ?: 0,
                 totalFloors = ledger?.floorsAboveGround,
-                exclusiveAreaM2 = request.exclusiveArea,
+                exclusiveAreaM2 = resolvedExclusiveArea ?: 0.0,
                 estimatedPropertyValueManwon = estimatedPropertyValue,
             ),
             priceHistory = buildPriceHistory(request),
@@ -253,9 +268,16 @@ class AnalysisDetailService(
             objectMapper.readValue(json, object : TypeReference<List<T>>() {})
         }.getOrDefault(emptyList())
 
+    private fun parseRegistryFloor(floorInfo: String?): Int? {
+        if (floorInfo.isNullOrBlank()) return null
+        val value = FLOOR_PATTERN.find(floorInfo)?.value?.toIntOrNull() ?: return null
+        return if (floorInfo.contains("지하")) -value else value
+    }
+
     companion object {
         private const val JEONSE_RATE = 0.70
         private const val DETAIL_AVERAGE_PRICE_RADIUS_METERS = 250.0
         private const val PRICE_HISTORY_MONTHS = 12
+        private val FLOOR_PATTERN = Regex("\\d+")
     }
 }

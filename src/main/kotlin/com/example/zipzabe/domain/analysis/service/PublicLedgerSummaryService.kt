@@ -132,10 +132,10 @@ class PublicLedgerSummaryService(
                 warningMessage = rightsSummary.trustWarning,
             ),
             buildingComparison = PublicLedgerSummaryResponse.BuildingComparisonSummary(
-                listingExclusiveArea = request.exclusiveArea,
+                listingExclusiveArea = registryTitle.exclusiveArea?.takeIf { it > 0.0 } ?: request.exclusiveArea,
                 ledgerExclusiveArea = buildingLedger.exclusiveArea,
                 areaDifference = buildingSummary.areaDifference,
-                listingFloor = request.floor,
+                listingFloor = parseFloor(registryTitle.floorInfo) ?: request.floor,
                 ledgerFloorInfo = registryTitle.floorInfo,
                 listingPurpose = buildingSummary.listingPurpose,
                 ledgerPurpose = buildingLedger.mainPurposeName,
@@ -150,12 +150,14 @@ class PublicLedgerSummaryService(
         registryTitle: RegistryTitle,
     ): BuildingSummary {
         val addressMatched = isAddressMatched(request.property, registryTitle)
-        val hasListingArea = request.exclusiveArea > 0.0
-        val areaDifference = if (hasListingArea) abs(request.exclusiveArea - buildingLedger.exclusiveArea) else 0.0
+        val registryArea = registryTitle.exclusiveArea?.takeIf { it > 0.0 }
+        val comparisonArea = registryArea ?: request.exclusiveArea.takeIf { it > 0.0 }
+        val hasListingArea = comparisonArea != null
+        val areaDifference = comparisonArea?.let { abs(it - buildingLedger.exclusiveArea) } ?: 0.0
         val areaMatched = !hasListingArea || areaDifference <= AREA_DIFF_TOLERANCE
         val parsedFloor = parseFloor(registryTitle.floorInfo)
-        val hasListingFloor = request.floor > 0
-        val floorMatched = !hasListingFloor || (parsedFloor != null && parsedFloor == request.floor)
+        val hasListingFloor = request.floor != 0
+        val floorMatched = !hasListingFloor || parsedFloor == request.floor
         val listingPurpose = inferListingPurpose(request.property)
         val usageMatched = isResidentialPurpose(buildingLedger.mainPurposeName)
 
@@ -164,12 +166,12 @@ class PublicLedgerSummaryService(
             warnings += "매물 주소와 등기부 표제부 주소가 일치하지 않습니다."
         }
         if (hasListingArea && !areaMatched) {
-            warnings += "매물 전용면적과 건축물대장 전용면적이 ${"%.2f".format(areaDifference)}㎡ 차이납니다."
+            warnings += "등기부 전유면적과 건축물대장 전용면적이 ${"%.2f".format(areaDifference)}㎡ 차이납니다."
         }
         if (hasListingFloor && parsedFloor == null) {
             warnings += "등기부 표제부의 층 정보를 해석할 수 없습니다."
         } else if (hasListingFloor && !floorMatched) {
-            warnings += "매물 층수와 등기부 표제부 층 정보가 일치하지 않습니다."
+            warnings += "입력된 층수와 등기부 표제부 층 정보가 일치하지 않습니다."
         }
         if (!usageMatched) {
             warnings += "건축물대장 주용도가 주거 용도로 확인되지 않습니다."

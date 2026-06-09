@@ -6,6 +6,8 @@ import com.example.zipzabe.domain.property.dto.PropertyDetailResponse
 import com.example.zipzabe.domain.property.dto.PropertyListingResponse
 import com.example.zipzabe.domain.property.entity.Property
 import com.example.zipzabe.domain.property.repository.PropertyRepository
+import com.example.zipzabe.domain.registry.repository.RegistryRawRepository
+import com.example.zipzabe.domain.registry.repository.RegistryTitleRepository
 import com.example.zipzabe.domain.user.facade.UserFacade
 import com.example.zipzabe.global.error.exception.AnalysisRequestNotFoundException
 import org.springframework.stereotype.Service
@@ -22,6 +24,8 @@ class PropertyQueryService(
     private val propertyRepository: PropertyRepository,
     private val analysisRequestRepository: AnalysisRequestRepository,
     private val buildingLedgerRepository: BuildingLedgerRepository,
+    private val registryRawRepository: RegistryRawRepository,
+    private val registryTitleRepository: RegistryTitleRepository,
 ) {
     @Transactional(readOnly = true)
     fun getListings(
@@ -55,7 +59,15 @@ class PropertyQueryService(
             .map { property ->
                 val request = analysisRequestRepository.findTopByPropertyAndUserOrderByRequestedAtDesc(property, user)
                 val ledger = buildingLedgerRepository.findTopByPropertyOrderByFetchedAtDesc(property)
-                PropertyListingResponse.from(property, request, ledger?.floorsAboveGround)
+                val registryValues = request?.let(::resolveRegistryValues)
+                PropertyListingResponse.from(
+                    property = property,
+                    request = request,
+                    totalFloors = ledger?.floorsAboveGround,
+                    resolvedFloor = registryValues?.first ?: request?.floor?.takeIf { it != 0 },
+                    resolvedExclusiveAreaM2 = registryValues?.second
+                        ?: request?.exclusiveArea?.takeIf { it > 0.0 },
+                )
             }
             .filter { listing ->
                 val contractMatched = transactionType.isNullOrBlank() ||
@@ -82,7 +94,33 @@ class PropertyQueryService(
         val property = propertyRepository.findById(propertyId).orElseThrow { AnalysisRequestNotFoundException() }
         val request = analysisRequestRepository.findTopByPropertyAndUserOrderByRequestedAtDesc(property, user)
         val ledger = buildingLedgerRepository.findTopByPropertyOrderByFetchedAtDesc(property)
-        return PropertyDetailResponse(PropertyListingResponse.from(property, request, ledger?.floorsAboveGround))
+        val registryValues = request?.let(::resolveRegistryValues)
+        return PropertyDetailResponse(
+            PropertyListingResponse.from(
+                property = property,
+                request = request,
+                totalFloors = ledger?.floorsAboveGround,
+                resolvedFloor = registryValues?.first ?: request?.floor?.takeIf { it != 0 },
+                resolvedExclusiveAreaM2 = registryValues?.second
+                    ?: request?.exclusiveArea?.takeIf { it > 0.0 },
+            )
+        )
+    }
+
+    private fun resolveRegistryValues(
+        request: com.example.zipzabe.domain.analysis.entity.AnalysisRequest,
+    ): Pair<Int?, Double?> {
+        val raw = registryRawRepository.findTopByRequestOrderByFetchedAtDesc(request)
+            ?: return null to null
+        val titles = registryTitleRepository.findByRegistryRaw(raw)
+        val floor = titles.firstNotNullOfOrNull { title ->
+            val floorInfo = title.floorInfo
+            floorInfo?.let(FLOOR_PATTERN::find)?.value?.toIntOrNull()?.let { value ->
+                if (floorInfo.contains("지하")) -value else value
+            }
+        }
+        val area = titles.firstNotNullOfOrNull { it.exclusiveArea?.takeIf { value -> value > 0.0 } }
+        return floor to area
     }
 
     private fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
@@ -93,5 +131,9 @@ class PropertyQueryService(
             cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
             sin(dLng / 2) * sin(dLng / 2)
         return earthRadius * 2 * atan2(sqrt(a), sqrt(1 - a))
+    }
+
+    companion object {
+        private val FLOOR_PATTERN = Regex("\\d+")
     }
 }

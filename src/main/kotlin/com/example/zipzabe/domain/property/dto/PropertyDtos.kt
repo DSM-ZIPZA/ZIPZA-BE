@@ -38,7 +38,13 @@ data class PropertyListingResponse(
     val createdAt: LocalDateTime,
 ) {
     companion object {
-        fun from(property: Property, request: AnalysisRequest? = null, totalFloors: Int? = null): PropertyListingResponse {
+        fun from(
+            property: Property,
+            request: AnalysisRequest? = null,
+            totalFloors: Int? = null,
+            resolvedFloor: Int? = request?.floor?.takeIf { it != 0 },
+            resolvedExclusiveAreaM2: Double? = request?.exclusiveArea?.takeIf { it > 0.0 },
+        ): PropertyListingResponse {
             val title = property.buildingName
                 ?: property.detailAddress
                 ?: property.roadAddress.ifBlank { property.jibunAddress }
@@ -62,8 +68,8 @@ data class PropertyListingResponse(
                 priceManwon = request?.depositAmount,
                 depositAmountManwon = request?.depositAmount,
                 monthlyRentManwon = request?.monthlyRent,
-                exclusiveAreaM2 = request?.exclusiveArea,
-                floor = request?.floor,
+                exclusiveAreaM2 = resolvedExclusiveAreaM2,
+                floor = resolvedFloor,
                 totalFloors = totalFloors,
                 createdAt = property.createdAt,
             )
