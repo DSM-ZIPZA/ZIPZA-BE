@@ -2,7 +2,7 @@ package com.example.zipzabe.domain.trade.service
 
 import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
 import com.example.zipzabe.domain.analysis.entity.AnalysisStatus
-import com.example.zipzabe.domain.analysis.entity.ContractType.JEONSE
+import com.example.zipzabe.domain.analysis.entity.ContractType as AnalysisContractType
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
 import com.example.zipzabe.domain.address.dto.AddressResolveResponse
 import com.example.zipzabe.domain.address.service.AddressService
@@ -86,6 +86,40 @@ class RentTradeServiceTest {
     }
 
     @Test
+    fun `fetchRentTrades saves only monthly rent records for monthly rent request`() {
+        val request = createAnalysisRequest(AnalysisContractType.MONTHLY_RENT)
+        val requestId = requireNotNull(request.id)
+
+        Mockito.`when`(analysisRequestRepository.findById(requestId)).thenReturn(Optional.of(request))
+        Mockito.`when`(
+            molitRentClient.getApartmentRent(
+                "test-service-key",
+                "11680",
+                "202404",
+                1,
+                1000
+            )
+        ).thenReturn(APARTMENT_RENT_XML)
+        Mockito.`when`(tradeRecordRepository.findByProperty(request.property)).thenReturn(emptyList())
+        Mockito.`when`(tradeRecordRepository.saveAll(Mockito.any<Iterable<TradeRecord>>())).thenAnswer {
+            it.getArgument<Iterable<TradeRecord>>(0).toList()
+        }
+
+        val response = service.fetchRentTrades(
+            requestId = requestId,
+            months = 1,
+            buildingType = BuildingType.APARTMENT,
+        )
+
+        assertEquals(1, response.fetchedCount)
+        assertEquals(1, response.savedCount)
+        val record = response.records.single()
+        assertEquals(ContractType.MONTHLY_RENT, record.contractType)
+        assertEquals(10000L, record.depositAmount)
+        assertEquals(50L, record.monthlyRent)
+    }
+
+    @Test
     fun `fetchRecentJeonseDeposits falls back to same neighborhood when building does not match`() {
         val dealYm = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"))
         Mockito.`when`(addressService.resolve("서울특별시 강남구 역삼동 777"))
@@ -121,7 +155,9 @@ class RentTradeServiceTest {
         assertEquals(listOf(20000L, 25000L), deposits)
     }
 
-    private fun createAnalysisRequest(): AnalysisRequest {
+    private fun createAnalysisRequest(
+        contractType: AnalysisContractType = AnalysisContractType.JEONSE,
+    ): AnalysisRequest {
         val user = User(
             email = "tester@example.com",
             nickname = "tester",
@@ -147,8 +183,9 @@ class RentTradeServiceTest {
         return AnalysisRequest(
             user = user,
             property = property,
-            contractType = JEONSE,
+            contractType = contractType,
             depositAmount = 30000L,
+            monthlyRent = 50L.takeIf { contractType == AnalysisContractType.MONTHLY_RENT },
             floor = 12,
             exclusiveArea = 84.9,
             contractDate = LocalDate.of(2024, 4, 20),
@@ -186,8 +223,8 @@ class RentTradeServiceTest {
                             <dealMonth>4</dealMonth>
                             <dealDay>16</dealDay>
                             <umdNm>역삼동</umdNm>
-                            <jibun>999</jibun>
-                            <aptNm>다른아파트</aptNm>
+                            <jibun>123-45</jibun>
+                            <aptNm>집자</aptNm>
                             <deposit>10,000</deposit>
                             <monthlyRent>50</monthlyRent>
                             <excluUseAr>59.5</excluUseAr>

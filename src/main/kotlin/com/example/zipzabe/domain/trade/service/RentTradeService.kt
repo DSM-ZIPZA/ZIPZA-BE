@@ -55,12 +55,14 @@ class RentTradeService(
         val lawdCd = resolveLawdCd(property)
         val targetBuildingTypes = resolveCandidateBuildingTypes(property, buildingType)
         val dealMonths = buildDealMonths(request.contractDate, months)
+        val targetContractType = request.contractType.toTradeContractType()
 
         val fetchedRecords = targetBuildingTypes
             .flatMap { targetBuildingType ->
                 dealMonths.flatMap { dealYm ->
                     fetchMonthlyItems(targetBuildingType, lawdCd, dealYm)
                         .filter { matchesProperty(it, property) }
+                        .filter { it.matchesContractType(targetContractType) }
                         .mapNotNull {
                             it.toTradeRecord(
                                 property = property,
@@ -104,7 +106,9 @@ class RentTradeService(
     fun getRentTrades(requestId: UUID): RentTradeListResponse {
         val request = analysisRequestRepository.findById(requestId)
             .orElseThrow(::AnalysisRequestNotFoundException)
+        val targetContractType = request.contractType.toTradeContractType()
         val records = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)
+            .filter { it.contractType == targetContractType }
             .map(::toResponse)
 
         return RentTradeListResponse(
@@ -152,6 +156,21 @@ class RentTradeService(
         baseDate: LocalDate,
         months: Int = DEFAULT_SEARCH_MONTHS,
         buildingType: BuildingType? = null,
+    ): List<TradeRecord> =
+        fetchRecentRecordsByProperty(
+            property = property,
+            baseDate = baseDate,
+            months = months,
+            buildingType = buildingType,
+            contractType = ContractType.JEONSE,
+        )
+
+    fun fetchRecentRecordsByProperty(
+        property: Property,
+        baseDate: LocalDate,
+        months: Int = DEFAULT_SEARCH_MONTHS,
+        buildingType: BuildingType? = null,
+        contractType: ContractType,
     ): List<TradeRecord> {
         val lawdCd = resolveLawdCd(property)
         val targetBuildingTypes = resolveCandidateBuildingTypes(property, buildingType)
@@ -162,7 +181,7 @@ class RentTradeService(
                 dealMonths.flatMap { dealYm ->
                     fetchMonthlyItems(targetBuildingType, lawdCd, dealYm)
                         .filter { matchesProperty(it, property) }
-                        .filter { (parseLongAmount(it.monthlyRent) ?: 0L) == 0L }
+                        .filter { it.matchesContractType(contractType) }
                         .mapNotNull {
                             it.toTradeRecord(
                                 property = property,
@@ -173,7 +192,12 @@ class RentTradeService(
                         }
                 }
             }
-            .filter { it.depositAmount > 0L }
+            .filter {
+                when (contractType) {
+                    ContractType.JEONSE -> it.depositAmount > 0L
+                    ContractType.MONTHLY_RENT -> (it.monthlyRent ?: 0L) > 0L
+                }
+            }
             .distinctBy(::toKey)
             .sortedWith(compareBy<TradeRecord> { it.contractDate }.thenBy { it.depositAmount })
     }
@@ -363,6 +387,20 @@ class RentTradeService(
             previousMonthlyRent = parseLongAmount(previousMonthlyRent),
         )
     }
+
+    private fun MolitRentApiResponse.Item.matchesContractType(contractType: ContractType): Boolean {
+        val rent = parseLongAmount(monthlyRent) ?: 0L
+        return when (contractType) {
+            ContractType.JEONSE -> rent == 0L
+            ContractType.MONTHLY_RENT -> rent > 0L
+        }
+    }
+
+    private fun com.example.zipzabe.domain.analysis.entity.ContractType.toTradeContractType(): ContractType =
+        when (this) {
+            com.example.zipzabe.domain.analysis.entity.ContractType.JEONSE -> ContractType.JEONSE
+            com.example.zipzabe.domain.analysis.entity.ContractType.MONTHLY_RENT -> ContractType.MONTHLY_RENT
+        }
 
     private fun MolitRentApiResponse.Item.parseContractDate(): LocalDate? {
         val year = parseIntAmount(dealYear) ?: return null

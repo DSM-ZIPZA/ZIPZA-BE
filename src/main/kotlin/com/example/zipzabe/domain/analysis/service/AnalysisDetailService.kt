@@ -147,17 +147,19 @@ class AnalysisDetailService(
     }
 
     private fun buildPriceHistory(request: com.example.zipzabe.domain.analysis.entity.AnalysisRequest): List<PricePointResponse> {
+        val targetContractType = request.contractType.toTradeContractType()
         val fetchedRecords = runCatching {
-            rentTradeService.fetchRecentJeonseRecordsByProperty(
+            rentTradeService.fetchRecentRecordsByProperty(
                 property = request.property,
                 baseDate = request.contractDate,
                 months = PRICE_HISTORY_MONTHS,
+                contractType = targetContractType,
             )
         }.getOrDefault(emptyList())
         val storedRecords = tradeRecordRepository.findByPropertyOrderByContractDateDesc(request.property)
-            .filter { it.contractType == ContractType.JEONSE }
+            .filter { it.contractType == targetContractType }
         val allRecords = (fetchedRecords + storedRecords)
-            .filter { it.depositAmount > 0L }
+            .filter { tradePrice(it, targetContractType) > 0L }
             .distinctBy(::tradeRecordKey)
         val latestDate = allRecords.maxOfOrNull { it.contractDate } ?: return emptyList()
         val cutoffDate = YearMonth.from(latestDate).minusMonths((PRICE_HISTORY_MONTHS - 1).toLong()).atDay(1)
@@ -167,18 +169,30 @@ class AnalysisDetailService(
         val history = records
             .groupBy { YearMonth.from(it.contractDate).toString() }
             .map { (month, items) ->
-                val values = items.map { it.depositAmount }
+                val values = items.map { tradePrice(it, targetContractType) }
                 PricePointResponse(
                     date = month,
-                    open = items.first().depositAmount,
+                    open = tradePrice(items.first(), targetContractType),
                     high = values.maxOrNull() ?: 0L,
                     low = values.minOrNull() ?: 0L,
-                    close = items.last().depositAmount,
+                    close = tradePrice(items.last(), targetContractType),
                     volume = items.size,
                 )
             }
         return history
     }
+
+    private fun tradePrice(record: TradeRecord, contractType: ContractType): Long =
+        when (contractType) {
+            ContractType.JEONSE -> record.depositAmount
+            ContractType.MONTHLY_RENT -> record.monthlyRent ?: 0L
+        }
+
+    private fun com.example.zipzabe.domain.analysis.entity.ContractType.toTradeContractType(): ContractType =
+        when (this) {
+            com.example.zipzabe.domain.analysis.entity.ContractType.JEONSE -> ContractType.JEONSE
+            com.example.zipzabe.domain.analysis.entity.ContractType.MONTHLY_RENT -> ContractType.MONTHLY_RENT
+        }
 
     private fun tradeRecordKey(record: TradeRecord): String =
         listOf(

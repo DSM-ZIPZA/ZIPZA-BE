@@ -4,6 +4,7 @@ import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.property.dto.PropertyDetailResponse
 import com.example.zipzabe.domain.property.dto.PropertyListingResponse
+import com.example.zipzabe.domain.property.dto.TransactionTypeResponse
 import com.example.zipzabe.domain.property.entity.Property
 import com.example.zipzabe.domain.property.repository.PropertyRepository
 import com.example.zipzabe.domain.registry.repository.RegistryRawRepository
@@ -71,7 +72,7 @@ class PropertyQueryService(
             }
             .filter { listing ->
                 val contractMatched = transactionType.isNullOrBlank() ||
-                    listing.transactionType?.name?.equals(transactionType, ignoreCase = true) == true
+                    listing.transactionType == parseTransactionType(transactionType)
                 val deposit = listing.depositAmountManwon ?: listing.priceManwon ?: 0L
                 val rent = listing.monthlyRentManwon ?: 0L
                 contractMatched &&
@@ -87,6 +88,13 @@ class PropertyQueryService(
             else -> listings
         }
     }
+
+    private fun parseTransactionType(value: String): TransactionTypeResponse? =
+        when (value.trim().uppercase()) {
+            "JEONSE", "LEASE" -> TransactionTypeResponse.LEASE
+            "MONTHLY_RENT", "RENT" -> TransactionTypeResponse.RENT
+            else -> null
+        }
 
     @Transactional(readOnly = true)
     fun getDetail(propertyId: UUID): PropertyDetailResponse {

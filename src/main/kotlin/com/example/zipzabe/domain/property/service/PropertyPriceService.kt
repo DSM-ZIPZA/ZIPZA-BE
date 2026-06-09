@@ -4,17 +4,14 @@ import com.example.zipzabe.domain.property.dto.AverageSalePriceResponse
 import com.example.zipzabe.domain.trade.service.RentTradeService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.Duration
-import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToLong
 
 @Service
 class PropertyPriceService(
     private val rentTradeService: RentTradeService,
+    private val jeonsePriceCacheService: JeonsePriceCacheService,
 ) {
     private val log = LoggerFactory.getLogger(PropertyPriceService::class.java)
-    private val molitJeonseCache = ConcurrentHashMap<MolitJeonseCacheKey, MolitJeonseCacheValue>()
 
     fun getAverageSalePrice(
         query: String?,
@@ -46,28 +43,28 @@ class PropertyPriceService(
         months: Int,
     ): List<Long> {
         if (query.isNullOrBlank()) return emptyList()
-        val cacheKey = MolitJeonseCacheKey(
-            query = query.trim(),
-            buildingName = buildingName?.trim().orEmpty(),
+        val normalizedMonths = months.coerceIn(MIN_JEONSE_MONTHS, MAX_JEONSE_MONTHS)
+        jeonsePriceCacheService.get(
+            query = query,
+            buildingName = buildingName,
             isApartment = isApartment,
-            months = months.coerceIn(MIN_JEONSE_MONTHS, MAX_JEONSE_MONTHS),
-        )
-        molitJeonseCache[cacheKey]
-            ?.takeIf { Duration.between(it.cachedAt, Instant.now()) < MOLIT_JEONSE_CACHE_TTL }
-            ?.let { return it.prices }
+            months = normalizedMonths,
+        )?.let { return it }
 
         return runCatching {
             rentTradeService.fetchRecentJeonseDepositsByAddress(
                 query = query,
                 buildingName = buildingName,
                 isApartment = isApartment,
-                months = months,
+                months = normalizedMonths,
             ).also { prices ->
-                if (prices.isNotEmpty()) {
-                    molitJeonseCache[cacheKey] = MolitJeonseCacheValue(prices, Instant.now())
-                } else {
-                    molitJeonseCache.remove(cacheKey)
-                }
+                jeonsePriceCacheService.put(
+                    query = query,
+                    buildingName = buildingName,
+                    isApartment = isApartment,
+                    months = normalizedMonths,
+                    prices = prices,
+                )
             }
         }.getOrElse { e ->
             log.warn(
@@ -84,18 +81,5 @@ class PropertyPriceService(
         private const val DEFAULT_JEONSE_MONTHS = 12
         private const val MIN_JEONSE_MONTHS = 1
         private const val MAX_JEONSE_MONTHS = 60
-        private val MOLIT_JEONSE_CACHE_TTL: Duration = Duration.ofHours(1)
     }
-
-    private data class MolitJeonseCacheKey(
-        val query: String,
-        val buildingName: String,
-        val isApartment: Boolean?,
-        val months: Int,
-    )
-
-    private data class MolitJeonseCacheValue(
-        val prices: List<Long>,
-        val cachedAt: Instant,
-    )
 }
