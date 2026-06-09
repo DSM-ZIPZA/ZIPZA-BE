@@ -4,6 +4,7 @@ import com.example.zipzabe.domain.analysis.entity.AnalysisRequest
 import com.example.zipzabe.domain.analysis.entity.AnalysisStatus
 import com.example.zipzabe.domain.analysis.entity.ContractType.JEONSE
 import com.example.zipzabe.domain.analysis.repository.AnalysisRequestRepository
+import com.example.zipzabe.domain.address.dto.AddressResolveResponse
 import com.example.zipzabe.domain.address.service.AddressService
 import com.example.zipzabe.domain.building.repository.BuildingLedgerRepository
 import com.example.zipzabe.domain.property.entity.Property
@@ -19,6 +20,8 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.util.Optional
 import java.util.UUID
 
@@ -80,6 +83,42 @@ class RentTradeServiceTest {
         assertEquals(84.9, record.exclusiveArea)
         assertEquals(12, record.floor)
         assertEquals(LocalDate.of(2024, 4, 15), record.contractDate)
+    }
+
+    @Test
+    fun `fetchRecentJeonseDeposits falls back to same neighborhood when building does not match`() {
+        val dealYm = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"))
+        Mockito.`when`(addressService.resolve("서울특별시 강남구 역삼동 777"))
+            .thenReturn(
+                AddressResolveResponse(
+                    roadAddress = "서울특별시 강남구 테헤란로 777",
+                    jibunAddress = "서울특별시 강남구 역삼동 777",
+                    administrativeCode = "1168010100",
+                    city = "서울특별시",
+                    district = "강남구",
+                    neighborhood = "역삼동",
+                    latitude = 37.5,
+                    longitude = 127.0,
+                )
+            )
+        Mockito.`when`(
+            molitRentClient.getApartmentRent(
+                "test-service-key",
+                "11680",
+                dealYm,
+                1,
+                1000,
+            )
+        ).thenReturn(NEIGHBORHOOD_RENT_XML)
+
+        val deposits = service.fetchRecentJeonseDepositsByAddress(
+            query = "서울특별시 강남구 역삼동 777",
+            buildingName = "검색결과에만있는아파트",
+            isApartment = true,
+            months = 1,
+        )
+
+        assertEquals(listOf(20000L, 25000L), deposits)
     }
 
     private fun createAnalysisRequest(): AnalysisRequest {
@@ -158,6 +197,58 @@ class RentTradeServiceTest {
                     <numOfRows>1000</numOfRows>
                     <pageNo>1</pageNo>
                     <totalCount>2</totalCount>
+                </body>
+            </response>
+        """.trimIndent()
+
+        private val NEIGHBORHOOD_RENT_XML = """
+            <response>
+                <header>
+                    <resultCode>00</resultCode>
+                    <resultMsg>NORMAL SERVICE.</resultMsg>
+                </header>
+                <body>
+                    <items>
+                        <item>
+                            <dealYear>2026</dealYear>
+                            <dealMonth>6</dealMonth>
+                            <dealDay>1</dealDay>
+                            <umdNm>역삼동</umdNm>
+                            <jibun>999</jibun>
+                            <aptNm>다른아파트1</aptNm>
+                            <deposit>20,000</deposit>
+                            <monthlyRent>0</monthlyRent>
+                            <excluUseAr>59.9</excluUseAr>
+                            <floor>5</floor>
+                        </item>
+                        <item>
+                            <dealYear>2026</dealYear>
+                            <dealMonth>6</dealMonth>
+                            <dealDay>2</dealDay>
+                            <umdNm>역삼동</umdNm>
+                            <jibun>888</jibun>
+                            <aptNm>다른아파트2</aptNm>
+                            <deposit>25,000</deposit>
+                            <monthlyRent>0</monthlyRent>
+                            <excluUseAr>84.9</excluUseAr>
+                            <floor>8</floor>
+                        </item>
+                        <item>
+                            <dealYear>2026</dealYear>
+                            <dealMonth>6</dealMonth>
+                            <dealDay>3</dealDay>
+                            <umdNm>삼성동</umdNm>
+                            <jibun>777</jibun>
+                            <aptNm>다른동아파트</aptNm>
+                            <deposit>30,000</deposit>
+                            <monthlyRent>0</monthlyRent>
+                            <excluUseAr>84.9</excluUseAr>
+                            <floor>10</floor>
+                        </item>
+                    </items>
+                    <numOfRows>1000</numOfRows>
+                    <pageNo>1</pageNo>
+                    <totalCount>3</totalCount>
                 </body>
             </response>
         """.trimIndent()

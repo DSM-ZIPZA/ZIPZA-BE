@@ -130,15 +130,20 @@ class RentTradeService(
             buildingName = buildingName,
         )
 
-        return buildingTypes
+        val jeonseItems = buildingTypes
             .flatMap { buildingType ->
                 dealMonths.flatMap { dealYm ->
                     fetchMonthlyItems(buildingType, lawdCd, dealYm)
-                        .filter { matcher.matches(it) }
                         .filter { (parseLongAmount(it.monthlyRent) ?: 0L) == 0L }
-                        .mapNotNull { parseLongAmount(it.depositAmount) }
                 }
             }
+        val exactMatches = jeonseItems.filter(matcher::matchesExact)
+        val selectedItems = exactMatches.ifEmpty {
+            jeonseItems.filter(matcher::matchesNeighborhood)
+        }
+
+        return selectedItems
+            .mapNotNull { parseLongAmount(it.depositAmount) }
             .filter { it > 0L }
     }
 
@@ -442,13 +447,8 @@ class RentTradeService(
         private val normalizedJibunAddress = normalize(jibunAddress)
         private val normalizedBuildingName = normalizeBuildingName(buildingName.orEmpty())
 
-        fun matches(item: MolitRentApiResponse.Item): Boolean {
-            val itemDong = normalize(item.legalDong.orEmpty())
-            if (itemDong.isNotBlank() && normalizedNeighborhood.isNotBlank() &&
-                !itemDong.contains(normalizedNeighborhood) && !normalizedNeighborhood.contains(itemDong)
-            ) {
-                return false
-            }
+        fun matchesExact(item: MolitRentApiResponse.Item): Boolean {
+            if (!matchesNeighborhood(item)) return false
 
             val itemBuildingName = normalizeBuildingName(item.buildingName.orEmpty())
             val buildingNameMatched = normalizedBuildingName.isNotBlank() &&
@@ -458,11 +458,14 @@ class RentTradeService(
             val itemJibun = normalize(item.jibun.orEmpty())
             val jibunMatched = itemJibun.isNotBlank() && normalizedJibunAddress.contains(itemJibun)
 
-            return if (normalizedBuildingName.isNotBlank()) {
-                buildingNameMatched || jibunMatched
-            } else {
-                jibunMatched || itemDong.isNotBlank()
-            }
+            return buildingNameMatched || jibunMatched
+        }
+
+        fun matchesNeighborhood(item: MolitRentApiResponse.Item): Boolean {
+            val itemDong = normalize(item.legalDong.orEmpty())
+            return itemDong.isNotBlank() &&
+                normalizedNeighborhood.isNotBlank() &&
+                (itemDong.contains(normalizedNeighborhood) || normalizedNeighborhood.contains(itemDong))
         }
     }
 
